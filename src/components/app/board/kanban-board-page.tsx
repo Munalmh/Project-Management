@@ -128,12 +128,12 @@ export function KanbanBoardPage() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const loadProjects = useCallback(async () => {
-    const res = await fetch('/api/projects')
+    const res = await fetch('/api/projects', { cache: 'no-store' })
     if (res.ok) setProjects(await res.json())
   }, [])
 
   const loadProject = useCallback(async (id: string) => {
-    const res = await fetch(`/api/projects/${id}`)
+    const res = await fetch(`/api/projects/${id}?t=${Date.now()}`, { cache: 'no-store' })
     if (res.ok) setProject(await res.json())
     setLoading(false)
   }, [])
@@ -190,8 +190,6 @@ export function KanbanBoardPage() {
         if (!res.ok) {
           toast.error('Failed to move ticket')
           setProject(previousProject)
-        } else {
-          loadProject(selectedProjectId!)
         }
       } catch { 
         toast.error('Failed to move ticket')
