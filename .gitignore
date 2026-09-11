@@ -1,0 +1,76 @@
+# dependencies
+node_modules/
+node_modules_bak/
+.pnp
+.pnp.js
+
+# testing
+coverage/
+
+# next.js
+.next/
+out/
+
+# production
+build/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# env files
+.env
+.env*.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# prisma
+db/
+*.db
+*.db-journal
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# logs
+dev.log
+server.log
+
+# worklog
+worklog.md
+
+# test scripts
+tests/
+
+# caddy
+Caddyfile
+
+# examples
+examples/
+
+# z-scripts and internal
+.zscripts/
+skills/
+download/
+mini-services/
+dewakoding-project-management/
+*.pid
+
+# lock files (use package-lock.json or bun.lock)
+# bun.lock is included for reproducibility
+tool-results/
+.env*

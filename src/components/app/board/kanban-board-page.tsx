@@ -1,0 +1,260 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { useSession } from 'next-auth/react'
+import { useAppStore } from '@/store/app-store'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import {
+  DndContext, closestCorners, DragOverlay, PointerSensor, useSensor, useSensors, type DragStartEvent, type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { ArrowLeft, GripVertical, Calendar, List, Plus } from 'lucide-react'
+import { format, isPast, isToday } from 'date-fns'
+
+interface Ticket {
+  id: string; title: string; uuid: string; description?: string
+  statusId: string; priorityId?: string
+  startDate?: string; dueDate?: string
+  project: { name: string; prefix: string; color: string }
+  status: { name: string; color: string; isCompleted: boolean }
+  priority: { name: string; color: string } | null
+  assignees: { user: { id: string; name: string } }[]
+  createdBy: { name: string }
+}
+
+interface Status {
+  id: string; name: string; color: string; sortOrder: number; isCompleted: boolean
+  tickets: Ticket[]
+}
+
+interface Project {
+  id: string; name: string; color: string; statuses: Status[]
+  tickets: Ticket[]
+}
+
+function getInitials(name: string) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+}
+
+function UserAvatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'md' }) {
+  const s = size === 'sm' ? 'h-6 w-6 text-[10px]' : 'h-8 w-8 text-xs'
+  return (
+    <div className={`${s} rounded-full bg-primary/10 text-primary font-medium flex items-center justify-center shrink-0`}>
+      {getInitials(name)}
+    </div>
+  )
+}
+
+function SortableTicket({ ticket }: { ticket: Ticket }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ticket.id })
+  const style = { transform: CSS.Transform.toString(transform), transition }
+
+  const isOverdue = ticket.dueDate && isPast(new Date(ticket.dueDate)) && !ticket.status.isCompleted
+
+  return (
+    <div ref={setNodeRef} style={style} className={`group ${isDragging ? 'opacity-50' : ''}`}>
+      <Card className="p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow border">
+        <div className="flex items-start gap-2">
+          <button {...attributes} {...listeners} className="mt-0.5 opacity-0 group-hover:opacity-50 transition-opacity">
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium leading-tight truncate">{ticket.title}</p>
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              {ticket.priority && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0" style={{ borderColor: ticket.priority.color, color: ticket.priority.color }}>
+                  {ticket.priority.name}
+                </Badge>
+              )}
+              {ticket.dueDate && (
+                <span className={`text-[10px] flex items-center gap-0.5 ${isOverdue ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}>
+                  <Calendar className="h-3 w-3" />
+                  {format(new Date(ticket.dueDate), 'MMM d')}
+                </span>
+              )}
+            </div>
+            {ticket.assignees.length > 0 && (
+              <div className="flex -space-x-1.5 mt-2">
+                {ticket.assignees.slice(0, 3).map(a => (
+                  <div key={a.user.id} className="h-6 w-6 rounded-full bg-primary/10 text-primary text-[10px] font-medium flex items-center justify-center ring-2 ring-background">
+                    {getInitials(a.user.name)}
+                  </div>
+                ))}
+                {ticket.assignees.length > 3 && (
+                  <div className="h-6 w-6 rounded-full bg-muted text-muted-foreground text-[10px] font-medium flex items-center justify-center ring-2 ring-background">
+                    +{ticket.assignees.length - 3}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+export function KanbanBoardPage() {
+  const { data: session } = useSession()
+  const { selectedProjectId, setSelectedProject } = useAppStore()
+  const router = useRouter()
+  const [projects, setProjects] = useState<Project[]>([])
+  const [project, setProject] = useState<Project | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeTicket, setActiveTicket] = useState<Ticket | null>(null)
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+
+  const loadProjects = useCallback(async () => {
+    const res = await fetch('/api/projects')
+    if (res.ok) setProjects(await res.json())
+  }, [])
+
+  const loadProject = useCallback(async (id: string) => {
+    const res = await fetch(`/api/projects/${id}`)
+    if (res.ok) setProject(await res.json())
+    setLoading(false)
+  }, [])
+
+  /* eslint-disable */
+  useEffect(() => { loadProjects() }, [loadProjects])
+  useEffect(() => {
+    if (selectedProjectId) { setLoading(true); loadProject(selectedProjectId) }
+    else { setProject(null); setLoading(false) }
+  }, [selectedProjectId, loadProject])
+  /* eslint-enable */
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(event.active.id as string)
+    if (project) {
+      const ticket = project.tickets.find(t => t.id === event.active.id)
+      if (ticket) setActiveTicket(ticket)
+    }
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    setActiveId(null)
+    setActiveTicket(null)
+
+    if (!over || active.id === over.id || !project) return
+
+    const ticketId = active.id as string
+    let targetStatusId: string | null = null
+
+    for (const status of project.statuses) {
+      if (status.id === over.id) { targetStatusId = status.id; break }
+      if (status.tickets.some(t => t.id === over.id)) { targetStatusId = status.id; break }
+    }
+
+    if (targetStatusId && targetStatusId !== project.tickets.find(t => t.id === ticketId)?.statusId) {
+      try {
+        const res = await fetch(`/api/tickets/${ticketId}/move`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ statusId: targetStatusId }),
+        })
+        if (res.ok) { loadProject(selectedProjectId!) }
+        else toast.error('Failed to move ticket')
+      } catch { toast.error('Failed to move ticket') }
+    }
+  }
+
+  const columns = project?.statuses.map(status => ({
+    ...status,
+    tickets: project.tickets.filter(t => t.statusId === status.id),
+  })) || []
+
+  if (!session) return null
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        {selectedProjectId && (
+          <Button variant="ghost" size="icon" onClick={() => router.push('/projects/' + selectedProjectId)} className="shrink-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        )}
+        {selectedProjectId ? (
+          <h1 className="text-xl font-semibold truncate">{project?.name || 'Loading...'}</h1>
+        ) : (
+          <h1 className="text-xl font-semibold">Kanban Board</h1>
+        )}
+        <div className="flex-1" />
+        {projects.length > 0 && (
+          <Select
+            value={selectedProjectId || undefined}
+            onValueChange={(id) => { setSelectedProject(id); router.push('/projects/' + id) }}
+          >
+            <SelectTrigger className="w-48"><SelectValue placeholder="Select project" /></SelectTrigger>
+            <SelectContent>
+              {projects.map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        <Button variant="outline" size="sm" onClick={() => router.push('/tickets')}>
+          <List className="h-4 w-4 mr-1.5" /> All Tickets
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <Card key={i} className="p-4"><Skeleton className="h-5 w-24 mb-4" />{[1, 2, 3].map(j => <Skeleton key={j} className="h-20 w-full mb-2 rounded-lg" />)}</Card>
+          ))}
+        </div>
+      ) : !project ? (
+        <Card className="flex flex-col items-center justify-center p-12 text-center">
+          <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
+            <List className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-medium mb-1">No project selected</h3>
+          <p className="text-sm text-muted-foreground mb-4">Select a project to view its board</p>
+        </Card>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <ScrollArea className="flex-1">
+            <div className="flex gap-4 p-1 min-h-[calc(100vh-200px)]">
+              {columns.map(col => (
+                <div key={col.id} className="w-[280px] min-w-[280px] shrink-0 flex flex-col">
+                  <div className="flex items-center gap-2 mb-3 px-1">
+                    <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: col.color }} />
+                    <h3 className="text-sm font-semibold">{col.name}</h3>
+                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{col.tickets.length}</Badge>
+                  </div>
+                  <SortableContext items={col.tickets.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                    <div className="flex flex-col gap-2 flex-1">
+                      {col.tickets.map(ticket => (
+                        <SortableTicket key={ticket.id} ticket={ticket} />
+                      ))}
+                      {col.tickets.length === 0 && (
+                        <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                          <p className="text-xs text-muted-foreground">No tickets</p>
+                        </div>
+                      )}
+                    </div>
+                  </SortableContext>
+                </div>
+              ))}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+          <DragOverlay>{activeTicket && <div className="w-[268px] opacity-80"><SortableTicket ticket={activeTicket} /></div>}</DragOverlay>
+        </DndContext>
+      )}
+    </div>
+  )
+}

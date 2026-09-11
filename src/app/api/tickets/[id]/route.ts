@@ -1,0 +1,80 @@
+import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { z } from 'zod'
+
+const updateSchema = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().optional(),
+  statusId: z.string().optional(),
+  priorityId: z.string().nullable().optional(),
+  startDate: z.string().nullable().optional(),
+  dueDate: z.string().nullable().optional(),
+})
+
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await params
+  const ticket = await db.ticket.findUnique({
+    where: { id },
+    include: {
+      project: { select: { id: true, name: true, prefix: true, color: true } },
+      status: true,
+      priority: true,
+      assignees: { include: { user: { select: { id: true, name: true, email: true } } } },
+      createdBy: { select: { id: true, name: true, email: true } },
+      comments: {
+        include: { user: { select: { id: true, name: true } } },
+        orderBy: { createdAt: 'asc' },
+      },
+    },
+  })
+
+  if (!ticket) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  return NextResponse.json(ticket)
+}
+
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await params
+  try {
+    const body = await req.json()
+    const data = updateSchema.parse(body)
+
+    const ticket = await db.ticket.update({
+      where: { id },
+      data: {
+        ...data,
+        startDate: data.startDate || null,
+        dueDate: data.dueDate || null,
+      },
+      include: {
+        project: { select: { name: true, prefix: true, color: true } },
+        status: true,
+        priority: true,
+        assignees: { include: { user: { select: { id: true, name: true } } } },
+        createdBy: { select: { name: true } },
+      },
+    })
+    return NextResponse.json(ticket)
+  } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.errors[0].message }, { status: 400 })
+    }
+    return NextResponse.json({ error: 'Failed to update ticket' }, { status: 500 })
+  }
+}
+
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await params
+  await db.ticket.delete({ where: { id } })
+  return NextResponse.json({ success: true })
+}
