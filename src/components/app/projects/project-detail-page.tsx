@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store/app-store'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -127,7 +127,9 @@ function getInitials(name: string): string {
 // ── Component ──────────────────────────────────────────────────────────
 
 export function ProjectDetailPage() {
-  const { selectedProjectId } = useAppStore()
+  const { selectedProjectId: storeProjectId } = useAppStore()
+  const params = useParams()
+  const selectedProjectId = (params?.id as string) || storeProjectId
   const router = useRouter()
   const [project, setProject] = useState<ProjectDetail | null>(null)
   const [loading, setLoading] = useState(true)
