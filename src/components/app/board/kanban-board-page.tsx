@@ -195,7 +195,7 @@ export function KanbanBoardPage() {
         {projects.length > 0 && (
           <Select
             value={selectedProjectId || undefined}
-            onValueChange={(id) => { setSelectedProject(id); router.push('/projects/' + id) }}
+            onValueChange={(id) => setSelectedProject(id)}
           >
             <SelectTrigger className="w-48"><SelectValue placeholder="Select project" /></SelectTrigger>
             <SelectContent>
