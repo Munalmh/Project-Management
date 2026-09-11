@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import {
-  DndContext, closestCorners, DragOverlay, PointerSensor, useSensor, useSensors, type DragStartEvent, type DragEndEvent,
+  DndContext, closestCorners, DragOverlay, PointerSensor, useSensor, useSensors, useDroppable, type DragStartEvent, type DragEndEvent,
 } from '@dnd-kit/core'
 import {
   SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
@@ -106,6 +106,15 @@ function SortableTicket({ ticket }: { ticket: Ticket }) {
   )
 }
 
+function DroppableColumn({ id, children }: { id: string, children: React.ReactNode }) {
+  const { setNodeRef } = useDroppable({ id })
+  return (
+    <div ref={setNodeRef} className="flex flex-col gap-2 flex-1 min-h-[150px]">
+      {children}
+    </div>
+  )
+}
+
 export function KanbanBoardPage() {
   const { data: session } = useSession()
   const { selectedProjectId, setSelectedProject } = useAppStore()
@@ -161,13 +170,28 @@ export function KanbanBoardPage() {
     }
 
     if (targetStatusId && targetStatusId !== project.tickets.find(t => t.id === ticketId)?.statusId) {
+      const previousProject = { ...project }
+      setProject({
+        ...project,
+        tickets: project.tickets.map(t => 
+          t.id === ticketId ? { ...t, statusId: targetStatusId as string } : t
+        )
+      })
+
       try {
         const res = await fetch(`/api/tickets/${ticketId}/move`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ statusId: targetStatusId }),
         })
-        if (res.ok) { loadProject(selectedProjectId!) }
-        else toast.error('Failed to move ticket')
-      } catch { toast.error('Failed to move ticket') }
+        if (!res.ok) {
+          toast.error('Failed to move ticket')
+          setProject(previousProject)
+        } else {
+          loadProject(selectedProjectId!)
+        }
+      } catch { 
+        toast.error('Failed to move ticket')
+        setProject(previousProject)
+      }
     }
   }
 
@@ -236,7 +260,7 @@ export function KanbanBoardPage() {
                     <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{col.tickets.length}</Badge>
                   </div>
                   <SortableContext items={col.tickets.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                    <div className="flex flex-col gap-2 flex-1">
+                    <DroppableColumn id={col.id}>
                       {col.tickets.map(ticket => (
                         <SortableTicket key={ticket.id} ticket={ticket} />
                       ))}
@@ -245,7 +269,7 @@ export function KanbanBoardPage() {
                           <p className="text-xs text-muted-foreground">No tickets</p>
                         </div>
                       )}
-                    </div>
+                    </DroppableColumn>
                   </SortableContext>
                 </div>
               ))}
