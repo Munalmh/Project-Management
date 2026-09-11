@@ -164,9 +164,14 @@ export function KanbanBoardPage() {
     const ticketId = active.id as string
     let targetStatusId: string | null = null
 
-    for (const status of project.statuses) {
-      if (status.id === over.id) { targetStatusId = status.id; break }
-      if (status.tickets.some(t => t.id === over.id)) { targetStatusId = status.id; break }
+    const overTicket = project.tickets.find(t => t.id === over.id)
+    if (overTicket) {
+      targetStatusId = overTicket.statusId
+    } else {
+      const overStatus = project.statuses.find(s => s.id === over.id)
+      if (overStatus) {
+        targetStatusId = overStatus.id
+      }
     }
 
     if (targetStatusId && targetStatusId !== project.tickets.find(t => t.id === ticketId)?.statusId) {
