@@ -160,15 +160,16 @@
 }
 ._1hh2I {
   background-color: transparent !important;
-  gap: 2px;
 }
 ._249_g {
   border-radius: 4px;
-  padding: 6px !important;
+  padding: 6px 0 !important;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.875rem;
+  flex: 0 0 14.2857% !important;
+  max-width: 14.2857% !important;
 }
 ._3zVi3:hover, ._1plWg:hover { 
   background-color: var(--accent) !important; 
