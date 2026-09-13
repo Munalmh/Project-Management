@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import {
-  DndContext, closestCorners, DragOverlay, PointerSensor, useSensor, useSensors, useDroppable, type DragStartEvent, type DragEndEvent,
+  DndContext, closestCorners, DragOverlay, PointerSensor, useSensor, useSensors, useDroppable, type DragStartEvent, type DragEndEvent, type DragOverEvent,
 } from '@dnd-kit/core'
 import {
   SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
@@ -122,6 +122,7 @@ export function KanbanBoardPage() {
   const [loading, setLoading] = useState(true)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null)
+  const [initialStatusId, setInitialStatusId] = useState<string | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -148,50 +149,73 @@ export function KanbanBoardPage() {
     setActiveId(event.active.id as string)
     if (project) {
       const ticket = project.tickets.find(t => t.id === event.active.id)
-      if (ticket) setActiveTicket(ticket)
+      if (ticket) {
+        setActiveTicket(ticket)
+        setInitialStatusId(ticket.statusId)
+      }
     }
   }
 
-  async function handleDragEnd(event: DragEndEvent) {
+  function handleDragOver(event: DragOverEvent) {
     const { active, over } = event
-    setActiveId(null)
-    setActiveTicket(null)
+    if (!over || !project) return
 
-    if (!over || active.id === over.id || !project) return
+    const activeId = active.id as string
+    const overId = over.id as string
 
-    const ticketId = active.id as string
+    if (activeId === overId) return
+
+    const activeTicket = project.tickets.find(t => t.id === activeId)
+    if (!activeTicket) return
+
     let targetStatusId: string | null = null
-
-    const overTicket = project.tickets.find(t => t.id === over.id)
+    const overTicket = project.tickets.find(t => t.id === overId)
     if (overTicket) {
       targetStatusId = overTicket.statusId
     } else {
-      const overStatus = project.statuses.find(s => s.id === over.id)
+      const overStatus = project.statuses.find(s => s.id === overId)
       if (overStatus) {
         targetStatusId = overStatus.id
       }
     }
 
-    if (targetStatusId && targetStatusId !== project.tickets.find(t => t.id === ticketId)?.statusId) {
-      const previousProject = { ...project }
-      setProject({
-        ...project,
-        tickets: project.tickets.map(t =>
-          t.id === ticketId ? { ...t, statusId: targetStatusId as string } : t
-        )
+    if (targetStatusId && targetStatusId !== activeTicket.statusId) {
+      setProject((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          tickets: prev.tickets.map(t =>
+            t.id === activeId ? { ...t, statusId: targetStatusId as string } : t
+          )
+        }
       })
+    }
+  }
 
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active } = event
+    setActiveId(null)
+    setActiveTicket(null)
+    const startStatusId = initialStatusId
+    setInitialStatusId(null)
+
+    if (!project) return
+
+    const ticketId = active.id as string
+    const activeTicket = project.tickets.find(t => t.id === ticketId)
+
+    if (activeTicket && startStatusId && activeTicket.statusId !== startStatusId) {
       try {
         const res = await fetch(`/api/tickets/${ticketId}/move`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ statusId: targetStatusId }),
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ statusId: activeTicket.statusId }),
         })
         if (!res.ok) {
           toast.error('Failed to move ticket')
-          setProject(previousProject)
+          setProject(prev => prev ? { ...prev, tickets: prev.tickets.map(t => t.id === ticketId ? { ...t, statusId: startStatusId } : t) } : prev)
         }
       } catch {
         toast.error('Failed to move ticket')
-        setProject(previousProject)
+        setProject(prev => prev ? { ...prev, tickets: prev.tickets.map(t => t.id === ticketId ? { ...t, statusId: startStatusId } : t) } : prev)
       }
     }
   }
@@ -250,7 +274,7 @@ export function KanbanBoardPage() {
           <p className="text-sm text-muted-foreground mb-4">Select a project to view its board</p>
         </Card>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
           <ScrollArea className="flex-1">
             <div className="flex gap-4 p-1 min-h-[calc(100vh-200px)]">
               {columns.map(col => (

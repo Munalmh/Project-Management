@@ -64,19 +64,42 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelled = false
+
     async function loadDashboard() {
       try {
-        const res = await fetch('/api/dashboard')
+        const res = await fetch('/api/dashboard', { cache: 'no-store' })
         if (!res.ok) throw new Error('Failed to load dashboard')
         const json = await res.json()
-        setData(json)
+        if (!cancelled) setData(json)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error')
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Unknown error')
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
+
+    // Initial load
     loadDashboard()
+
+    // Refresh whenever the tab/window regains focus or becomes visible again,
+    // so numbers stay current after moving tickets elsewhere without
+    // requiring a full page reload.
+    function handleVisible() {
+      if (document.visibilityState === 'visible') loadDashboard()
+    }
+    window.addEventListener('focus', loadDashboard)
+    document.addEventListener('visibilitychange', handleVisible)
+
+    // Light periodic refresh as a fallback for long idle sessions.
+    const interval = setInterval(loadDashboard, 60_000)
+
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', loadDashboard)
+      document.removeEventListener('visibilitychange', handleVisible)
+      clearInterval(interval)
+    }
   }, [])
 
   const statCards = [
@@ -133,33 +156,33 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {loading
           ? Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <Skeleton className="h-12 w-12 rounded-lg" />
-                    <div className="space-y-2 flex-1">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-8 w-12" />
-                    </div>
+            <Card key={i}>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-12 w-12 rounded-lg" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-8 w-12" />
                   </div>
-                </CardContent>
-              </Card>
-            ))
+                </div>
+              </CardContent>
+            </Card>
+          ))
           : statCards.map((stat) => (
-              <Card key={stat.label}>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className={`${stat.bg} ${stat.color} p-3 rounded-lg`}>
-                      <stat.icon className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">{stat.label}</p>
-                      <p className="text-2xl font-bold">{stat.value}</p>
-                    </div>
+            <Card key={stat.label}>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className={`${stat.bg} ${stat.color} p-3 rounded-lg`}>
+                    <stat.icon className="h-6 w-6" />
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                  <div>
+                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    <p className="text-2xl font-bold">{stat.value}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
       </div>
 
       {/* Recent Tickets */}
