@@ -23,6 +23,7 @@ import { format, formatDistanceToNow } from 'date-fns'
 import NepaliCalendar from '@sbmdkl/nepali-datepicker-reactjs'
 import '@sbmdkl/nepali-datepicker-reactjs/dist/index.css'
 import { formatBs, getTodayBs } from '@/lib/nepali-date'
+import { TicketAttachments } from '@/components/app/tickets/ticket-attachments'
 
 interface Ticket {
   id: string; title: string; uuid: string; description?: string
@@ -280,12 +281,12 @@ export function TicketsPage() {
             </div>
             <div className="space-y-2">
               <Label>Due Date</Label>
-              <NepaliCalendar 
-                defaultDate={createForm.dueDate || ''} 
-                onChange={({ bsDate }: { bsDate: string }) => setCreateForm(f => ({ ...f, dueDate: bsDate }))} 
-                language="en" 
-                dateFormat="YYYY-MM-DD" 
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" 
+              <NepaliCalendar
+                defaultDate={createForm.dueDate || ''}
+                onChange={({ bsDate }: { bsDate: string }) => setCreateForm(f => ({ ...f, dueDate: bsDate }))}
+                language="en"
+                dateFormat="YYYY-MM-DD"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
             {createForm.projectId && members.length > 0 && (
@@ -352,6 +353,9 @@ export function TicketsPage() {
                   </div>
                 </div>
               )}
+              <div className="border-t pt-4 mb-4">
+                <TicketAttachments ticketId={selectedTicket.id} />
+              </div>
               <div className="border-t pt-4">
                 <h4 className="text-sm font-semibold mb-3">Comments ({comments.length})</h4>
                 <ScrollArea className="max-h-48">

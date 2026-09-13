@@ -1,5 +1,5 @@
 'use client'
-
+import { TicketAttachments } from '@/components/app/tickets/ticket-attachments'
 import { useEffect, useState, useCallback } from 'react'
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import {
@@ -365,17 +365,17 @@ export function ProjectDetailPage() {
   const completionRate =
     project && project._count.tickets > 0
       ? Math.round(
-          ((project.statuses
-            .filter((s) => s.isCompleted)
-            .reduce((acc, s) => {
-              return (
-                acc +
-                project.tickets.filter((t) => t.status?.name === s.name).length
-              )
-            }, 0)) /
-            project._count.tickets) *
-            100
-        )
+        ((project.statuses
+          .filter((s) => s.isCompleted)
+          .reduce((acc, s) => {
+            return (
+              acc +
+              project.tickets.filter((t) => t.status?.name === s.name).length
+            )
+          }, 0)) /
+          project._count.tickets) *
+        100
+      )
       : 0
 
   // ── Loading State ─────────────────────────────────────────────────
@@ -812,11 +812,10 @@ export function ProjectDetailPage() {
                         <button
                           key={m.userId}
                           type="button"
-                          className={`flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm text-left transition-colors ${
-                            isSelected
-                              ? 'bg-primary/10 text-primary'
-                              : 'hover:bg-muted'
-                          }`}
+                          className={`flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm text-left transition-colors ${isSelected
+                            ? 'bg-primary/10 text-primary'
+                            : 'hover:bg-muted'
+                            }`}
                           onClick={() => toggleAssignee(m.user.id)}
                         >
                           <Avatar className="h-6 w-6">
@@ -1038,6 +1037,11 @@ export function ProjectDetailPage() {
                     )}
                   </div>
                 </div>
+
+                <Separator />
+
+                {/* Attachments */}
+                <TicketAttachments ticketId={selectedTicket.id} />
 
                 <Separator />
 

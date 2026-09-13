@@ -21,6 +21,7 @@ model User {
   assignedTickets TicketAssignee[]
   comments        TicketComment[]
   projectMembers  ProjectMember[]
+  uploadedAttachments Attachment[]
 }
 
 model Project {
@@ -29,8 +30,8 @@ model Project {
   description String?
   prefix      String    @default("PROJ")
   color       String    @default("#6366f1")
-  startDate   String?
-  endDate     String?
+  startDate   DateTime?
+  endDate     DateTime?
   status      String    @default("active")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -84,8 +85,8 @@ model Ticket {
   projectId   String
   statusId    String
   priorityId  String?
-  startDate   String?
-  dueDate     String?
+  startDate   DateTime?
+  dueDate     DateTime?
   createdById String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -96,6 +97,21 @@ model Ticket {
   createdBy User           @relation("TicketCreator", fields: [createdById], references: [id])
   assignees TicketAssignee[]
   comments  TicketComment[]
+  attachments Attachment[]
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  ticketId     String
+  fileName     String
+  fileType     String
+  fileSize     Int
+  url          String
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  ticket     Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploadedBy User   @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
 }
 
 model TicketAssignee {
