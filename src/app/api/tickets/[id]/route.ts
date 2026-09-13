@@ -6,7 +6,7 @@ import { z } from 'zod'
 
 const updateSchema = z.object({
   title: z.string().min(1).optional(),
-  description: z.string().optional(),
+  description: z.string().nullable().optional(),
   statusId: z.string().optional(),
   priorityId: z.string().nullable().optional(),
   startDate: z.string().nullable().optional(),
@@ -50,8 +50,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       where: { id },
       data: {
         ...data,
-        startDate: data.startDate || null,
-        dueDate: data.dueDate || null,
+        startDate: data.startDate ? new Date(data.startDate.replace(/ /g, '-')).toISOString() : null,
+        dueDate: data.dueDate ? new Date(data.dueDate.replace(/ /g, '-')).toISOString() : null,
       },
       include: {
         project: { select: { name: true, prefix: true, color: true } },

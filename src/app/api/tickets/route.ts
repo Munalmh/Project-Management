@@ -6,13 +6,13 @@ import { z } from 'zod'
 
 const ticketSchema = z.object({
   title: z.string().min(1, 'Title is required'),
-  description: z.string().optional(),
+  description: z.string().nullable().optional(),
   projectId: z.string().min(1),
   statusId: z.string().min(1),
-  priorityId: z.string().optional(),
+  priorityId: z.string().nullable().optional(),
   assigneeIds: z.array(z.string()).optional(),
-  startDate: z.string().optional(),
-  dueDate: z.string().optional(),
+  startDate: z.string().nullable().optional(),
+  dueDate: z.string().nullable().optional(),
 })
 
 export async function GET(req: Request) {
@@ -73,8 +73,8 @@ export async function POST(req: Request) {
         statusId: data.statusId,
         priorityId: data.priorityId,
         createdById: userId,
-        startDate: data.startDate || null,
-        dueDate: data.dueDate || null,
+        startDate: data.startDate ? new Date(data.startDate.replace(/ /g, '-')).toISOString() : null,
+        dueDate: data.dueDate ? new Date(data.dueDate.replace(/ /g, '-')).toISOString() : null,
         assignees: data.assigneeIds
           ? { create: data.assigneeIds.map((uid: string) => ({ userId: uid })) }
           : undefined,

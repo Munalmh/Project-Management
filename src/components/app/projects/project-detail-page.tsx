@@ -170,7 +170,7 @@ export function ProjectDetailPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/projects/${selectedProjectId}`)
+      const res = await fetch(`/api/projects/${selectedProjectId}?t=${Date.now()}`, { cache: 'no-store' })
       if (!res.ok) throw new Error('Failed to load project')
       const json = await res.json()
       setProject(json)

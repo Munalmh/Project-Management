@@ -6,11 +6,11 @@ import { z } from 'zod'
 
 const projectSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  description: z.string().optional(),
+  description: z.string().nullable().optional(),
   prefix: z.string().min(1, 'Prefix is required'),
-  color: z.string().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
+  color: z.string().nullable().optional(),
+  startDate: z.string().nullable().optional(),
+  endDate: z.string().nullable().optional(),
 })
 
 export async function GET() {
@@ -41,8 +41,8 @@ export async function POST(req: Request) {
     const project = await db.project.create({
       data: {
         ...data,
-        startDate: data.startDate || null,
-        endDate: data.endDate || null,
+        startDate: data.startDate ? new Date(data.startDate.replace(/ /g, '-')).toISOString() : null,
+        endDate: data.endDate ? new Date(data.endDate.replace(/ /g, '-')).toISOString() : null,
         members: { create: { userId, role: 'manager' } },
         statuses: {
           create: [

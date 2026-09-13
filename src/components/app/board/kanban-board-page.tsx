@@ -42,6 +42,7 @@ interface Status {
 interface Project {
   id: string; name: string; color: string; statuses: Status[]
   tickets: Ticket[]
+  members?: { user: { id: string; name: string } }[]
 }
 
 function getInitials(name: string) {
@@ -57,17 +58,17 @@ function UserAvatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'md' })
   )
 }
 
-function SortableTicket({ ticket }: { ticket: Ticket }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ticket.id })
+function SortableTicket({ ticket, canDrag }: { ticket: Ticket; canDrag: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ticket.id, disabled: !canDrag })
   const style = { transform: CSS.Transform.toString(transform), transition }
 
   const isOverdue = ticket.dueDate && isPast(new Date(ticket.dueDate)) && !ticket.status.isCompleted
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={`group ${isDragging ? 'opacity-50' : ''}`}>
-      <Card className="p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow border">
+      <Card className={`p-3 transition-shadow border ${canDrag ? 'cursor-grab active:cursor-grabbing hover:shadow-md' : 'opacity-80'}`}>
         <div className="flex items-start gap-2">
-          <GripVertical className="h-4 w-4 mt-0.5 opacity-0 group-hover:opacity-50 transition-opacity shrink-0" />
+          {canDrag && <GripVertical className="h-4 w-4 mt-0.5 opacity-0 group-hover:opacity-50 transition-opacity shrink-0" />}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium leading-tight truncate">{ticket.title}</p>
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
@@ -287,7 +288,11 @@ export function KanbanBoardPage() {
                   <SortableContext items={col.tickets.map(t => t.id)} strategy={verticalListSortingStrategy}>
                     <DroppableColumn id={col.id}>
                       {col.tickets.map(ticket => (
-                        <SortableTicket key={ticket.id} ticket={ticket} />
+                        <SortableTicket 
+                          key={ticket.id} 
+                          ticket={ticket} 
+                          canDrag={(session?.user as any)?.role !== 'admin' && !!project?.members?.some(m => m.user.id === (session?.user as any)?.id)} 
+                        />
                       ))}
                       {col.tickets.length === 0 && (
                         <div className="border-2 border-dashed rounded-lg p-6 text-center">

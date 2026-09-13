@@ -87,7 +87,7 @@ export function TicketsPage() {
     const params = new URLSearchParams()
     if (search) params.set('search', search)
     if (filterProject && filterProject !== 'all') params.set('projectId', filterProject)
-    const res = await fetch(`/api/tickets?${params}`)
+      const res = await fetch(`/api/tickets?${params.toString()}&t=${Date.now()}`, { cache: 'no-store' })
     if (res.ok) setTickets(await res.json())
     setLoading(false)
   }, [search, filterProject])

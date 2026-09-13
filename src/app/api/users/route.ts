@@ -22,7 +22,7 @@ export async function GET() {
     },
     orderBy: { createdAt: 'desc' },
   })
-  return NextResponse.json(users)
+  console.log('USERS API:', users.map(u=>u.role)); return NextResponse.json(users)
 }
 
 export async function POST(req: Request) {

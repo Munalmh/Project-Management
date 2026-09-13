@@ -6,9 +6,9 @@ import { z } from 'zod'
 
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
-  description: z.string().optional(),
+  description: z.string().nullable().optional(),
   prefix: z.string().min(1).optional(),
-  color: z.string().optional(),
+  color: z.string().nullable().optional(),
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   status: z.string().optional(),
@@ -54,8 +54,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       where: { id },
       data: {
         ...data,
-        startDate: data.startDate || null,
-        endDate: data.endDate || null,
+        startDate: data.startDate ? new Date(data.startDate.replace(/ /g, '-')).toISOString() : null,
+        endDate: data.endDate ? new Date(data.endDate.replace(/ /g, '-')).toISOString() : null,
       },
       include: { _count: { select: { tickets: true, members: true } } },
     })
