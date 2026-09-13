@@ -64,12 +64,10 @@ function SortableTicket({ ticket }: { ticket: Ticket }) {
   const isOverdue = ticket.dueDate && isPast(new Date(ticket.dueDate)) && !ticket.status.isCompleted
 
   return (
-    <div ref={setNodeRef} style={style} className={`group ${isDragging ? 'opacity-50' : ''}`}>
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={`group ${isDragging ? 'opacity-50' : ''}`}>
       <Card className="p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow border">
         <div className="flex items-start gap-2">
-          <button {...attributes} {...listeners} className="mt-0.5 opacity-0 group-hover:opacity-50 transition-opacity">
-            <GripVertical className="h-4 w-4" />
-          </button>
+          <GripVertical className="h-4 w-4 mt-0.5 opacity-0 group-hover:opacity-50 transition-opacity shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium leading-tight truncate">{ticket.title}</p>
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
@@ -178,7 +176,7 @@ export function KanbanBoardPage() {
       const previousProject = { ...project }
       setProject({
         ...project,
-        tickets: project.tickets.map(t => 
+        tickets: project.tickets.map(t =>
           t.id === ticketId ? { ...t, statusId: targetStatusId as string } : t
         )
       })
@@ -191,7 +189,7 @@ export function KanbanBoardPage() {
           toast.error('Failed to move ticket')
           setProject(previousProject)
         }
-      } catch { 
+      } catch {
         toast.error('Failed to move ticket')
         setProject(previousProject)
       }
