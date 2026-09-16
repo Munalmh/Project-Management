@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { format, parseISO } from 'date-fns'
 import NepaliCalendar from '@sbmdkl/nepali-datepicker-reactjs'
 import '@sbmdkl/nepali-datepicker-reactjs/dist/index.css'
 import { formatBs } from '@/lib/nepali-date'
 import { Plus, FolderKanban, Users, Ticket, CalendarDays } from 'lucide-react'
+import { ExcelActions } from '@/components/app/shared/excel-actions'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store/app-store'
 import { useRouter } from 'next/navigation'
@@ -66,22 +67,24 @@ export function ProjectsPage() {
   const [formColor, setFormColor] = useState(PREDEFINED_COLORS[0])
   const [formStartDate, setFormStartDate] = useState('')
   const [formEndDate, setFormEndDate] = useState('')
+  const [formBudgetHours, setFormBudgetHours] = useState('')
+
+  const loadProjects = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects?t=${Date.now()}`, { cache: 'no-store' })
+      if (!res.ok) throw new Error('Failed to load projects')
+      const json = await res.json()
+      setProjects(Array.isArray(json) ? json : [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    async function loadProjects() {
-      try {
-        const res = await fetch(`/api/projects?t=${Date.now()}`, { cache: 'no-store' })
-        if (!res.ok) throw new Error('Failed to load projects')
-        const json = await res.json()
-        setProjects(Array.isArray(json) ? json : [])
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error')
-      } finally {
-        setLoading(false)
-      }
-    }
     loadProjects()
-  }, [])
+  }, [loadProjects])
 
   function resetForm() {
     setFormName('')
@@ -90,6 +93,7 @@ export function ProjectsPage() {
     setFormColor(PREDEFINED_COLORS[0])
     setFormStartDate('')
     setFormEndDate('')
+    setFormBudgetHours('')
   }
 
   async function handleCreateProject(e: React.FormEvent) {
@@ -108,6 +112,7 @@ export function ProjectsPage() {
           color: formColor,
           startDate: formStartDate || null,
           endDate: formEndDate || null,
+          budgetHours: formBudgetHours.trim() ? Number(formBudgetHours) : null,
         }),
       })
       if (!res.ok) {
@@ -146,6 +151,16 @@ export function ProjectsPage() {
             </Badge>
           )}
         </div>
+        <div className="flex items-center gap-2">
+        <ExcelActions
+          entityLabel="Projects"
+          exportUrl="/api/projects/export"
+          validateUrl="/api/projects/import/validate"
+          commitUrl="/api/projects/import/commit"
+          labelField="name"
+          subField="prefix"
+          onImported={loadProjects}
+        />
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           setDialogOpen(open)
           if (!open) resetForm()
@@ -252,6 +267,18 @@ export function ProjectsPage() {
                     />
                   </div>
                 </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="project-budget">Budget Hours</Label>
+                  <Input
+                    id="project-budget"
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={formBudgetHours}
+                    onChange={(e) => setFormBudgetHours(e.target.value)}
+                    placeholder="e.g. 200"
+                  />
+                </div>
               </div>
               <DialogFooter>
                 <Button
@@ -271,6 +298,7 @@ export function ProjectsPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Project Cards Grid */}

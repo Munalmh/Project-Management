@@ -1,6 +1,7 @@
 'use client'
-import { TicketAttachments } from '@/components/app/tickets/ticket-attachments'
+
 import { useEffect, useState, useCallback } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import {
   ArrowLeft,
@@ -13,10 +14,10 @@ import {
   Send,
   Loader2,
   X,
+  BarChart3,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store/app-store'
-import { useRouter, useParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,6 +27,11 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
+import { Progress } from '@/components/ui/progress'
+import { TicketAttachments } from '@/components/app/tickets/ticket-attachments'
+import { TicketChecklist } from '@/components/app/tickets/ticket-checklist'
+import { TicketTimesheet } from '@/components/app/tickets/ticket-timesheet'
+import { ProjectGanttChart } from '@/components/app/projects/project-gantt-chart'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Select,
@@ -85,6 +91,8 @@ interface ProjectDetail {
   endDate: string | null
   status: string
   createdAt: string
+  budgetHours: number | null
+  hoursLogged: number
   _count: { tickets: number; members: number }
   statuses: ProjectStatus[]
   members: ProjectMember[]
@@ -127,10 +135,11 @@ function getInitials(name: string): string {
 // ── Component ──────────────────────────────────────────────────────────
 
 export function ProjectDetailPage() {
-  const { selectedProjectId: storeProjectId } = useAppStore()
-  const params = useParams()
-  const selectedProjectId = (params?.id as string) || storeProjectId
+  const params = useParams<{ id: string }>()
   const router = useRouter()
+  const { setSelectedProject } = useAppStore()
+  const projectId = params?.id
+
   const [project, setProject] = useState<ProjectDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -165,12 +174,18 @@ export function ProjectDetailPage() {
   const [commentText, setCommentText] = useState('')
   const [submittingComment, setSubmittingComment] = useState(false)
 
+  useEffect(() => {
+    if (projectId) {
+      setSelectedProject(projectId)
+    }
+  }, [projectId, setSelectedProject])
+
   const loadProject = useCallback(async () => {
-    if (!selectedProjectId) return
+    if (!projectId) return
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/projects/${selectedProjectId}?t=${Date.now()}`, { cache: 'no-store' })
+      const res = await fetch(`/api/projects/${projectId}`)
       if (!res.ok) throw new Error('Failed to load project')
       const json = await res.json()
       setProject(json)
@@ -179,7 +194,7 @@ export function ProjectDetailPage() {
     } finally {
       setLoading(false)
     }
-  }, [selectedProjectId])
+  }, [projectId])
 
   useEffect(() => {
     loadProject()
@@ -217,10 +232,10 @@ export function ProjectDetailPage() {
 
   async function handleAddMember(e: React.FormEvent) {
     e.preventDefault()
-    if (!addMemberForm.userId || !selectedProjectId) return
+    if (!addMemberForm.userId || !projectId) return
     setAddingMember(true)
     try {
-      const res = await fetch(`/api/projects/${selectedProjectId}/members`, {
+      const res = await fetch(`/api/projects/${projectId}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: addMemberForm.userId, role: addMemberForm.role }),
@@ -240,10 +255,10 @@ export function ProjectDetailPage() {
   }
 
   async function handleRemoveMember(userId: string) {
-    if (!selectedProjectId) return
+    if (!projectId) return
     setRemovingMemberId(userId)
     try {
-      const res = await fetch(`/api/projects/${selectedProjectId}/members`, {
+      const res = await fetch(`/api/projects/${projectId}/members`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId }),
@@ -278,7 +293,7 @@ export function ProjectDetailPage() {
 
   async function handleCreateTicket(e: React.FormEvent) {
     e.preventDefault()
-    if (!ticketForm.title.trim() || !selectedProjectId) return
+    if (!ticketForm.title.trim() || !projectId) return
     setCreatingTicket(true)
     try {
       const res = await fetch('/api/tickets', {
@@ -287,7 +302,7 @@ export function ProjectDetailPage() {
         body: JSON.stringify({
           title: ticketForm.title.trim(),
           description: ticketForm.description.trim() || null,
-          projectId: selectedProjectId,
+          projectId: projectId,
           statusId: ticketForm.statusId || null,
           priorityId: ticketForm.priorityId || null,
           assigneeIds: ticketForm.assigneeIds,
@@ -365,17 +380,17 @@ export function ProjectDetailPage() {
   const completionRate =
     project && project._count.tickets > 0
       ? Math.round(
-        ((project.statuses
-          .filter((s) => s.isCompleted)
-          .reduce((acc, s) => {
-            return (
-              acc +
-              project.tickets.filter((t) => t.status?.name === s.name).length
-            )
-          }, 0)) /
-          project._count.tickets) *
-        100
-      )
+          ((project.statuses
+            .filter((s) => s.isCompleted)
+            .reduce((acc, s) => {
+              return (
+                acc +
+                project.tickets.filter((t) => t.status?.name === s.name).length
+              )
+            }, 0)) /
+            project._count.tickets) *
+            100
+        )
       : 0
 
   // ── Loading State ─────────────────────────────────────────────────
@@ -459,6 +474,7 @@ export function ProjectDetailPage() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="tickets">Tickets</TabsTrigger>
           <TabsTrigger value="board">Board</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
         </TabsList>
 
         {/* ── Overview Tab ──────────────────────────────────────── */}
@@ -595,6 +611,31 @@ export function ProjectDetailPage() {
                       </p>
                     </div>
                   </div>
+                  {project.budgetHours != null && (
+                    <>
+                      <Separator />
+                      <div className="flex items-start gap-3">
+                        <BarChart3 className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-muted-foreground">Budget Hours</p>
+                            <p className="text-xs font-medium">
+                              {project.hoursLogged ?? 0} / {project.budgetHours}h
+                            </p>
+                          </div>
+                          <Progress
+                            value={Math.min(100, ((project.hoursLogged ?? 0) / project.budgetHours) * 100)}
+                            className="h-2 mt-1.5"
+                          />
+                          {(project.hoursLogged ?? 0) > project.budgetHours && (
+                            <p className="text-xs text-red-600 mt-1">
+                              {Math.round(((project.hoursLogged ?? 0) - project.budgetHours) * 100) / 100}h over budget
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
                   <Separator />
                   <div className="flex items-center gap-3">
                     <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -729,6 +770,20 @@ export function ProjectDetailPage() {
             </div>
           )}
         </TabsContent>
+
+        {/* ── Timeline Tab ──────────────────────────────────────── */}
+        <TabsContent value="timeline" className="space-y-4 mt-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Timeline</h2>
+          </div>
+          <ProjectGanttChart
+            tickets={project.tickets}
+            onTicketClick={(id) => {
+              const t = project.tickets.find((tk) => tk.id === id)
+              if (t) openTicketDetail(t)
+            }}
+          />
+        </TabsContent>
       </Tabs>
 
       {/* ── New Ticket Dialog ──────────────────────────────────── */}
@@ -812,10 +867,11 @@ export function ProjectDetailPage() {
                         <button
                           key={m.userId}
                           type="button"
-                          className={`flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm text-left transition-colors ${isSelected
-                            ? 'bg-primary/10 text-primary'
-                            : 'hover:bg-muted'
-                            }`}
+                          className={`flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm text-left transition-colors ${
+                            isSelected
+                              ? 'bg-primary/10 text-primary'
+                              : 'hover:bg-muted'
+                          }`}
                           onClick={() => toggleAssignee(m.user.id)}
                         >
                           <Avatar className="h-6 w-6">
@@ -1037,6 +1093,16 @@ export function ProjectDetailPage() {
                     )}
                   </div>
                 </div>
+
+                <Separator />
+
+                {/* Checklist */}
+                <TicketChecklist ticketId={selectedTicket.id} />
+
+                <Separator />
+
+                {/* Timesheet */}
+                <TicketTimesheet ticketId={selectedTicket.id} />
 
                 <Separator />
 

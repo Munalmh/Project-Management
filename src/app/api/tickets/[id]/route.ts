@@ -24,7 +24,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       project: { select: { id: true, name: true, prefix: true, color: true } },
       status: true,
       priority: true,
-      assignees: { include: { user: { select: { id: true, name: true, email: true } } } },
+      assignees: { include: { user: { select: { id: true, name: true, email: true } }, assignedBy: { select: { id: true, name: true } } } },
       createdBy: { select: { id: true, name: true, email: true } },
       comments: {
         include: { user: { select: { id: true, name: true } } },

@@ -18,12 +18,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { TicketAttachments } from '@/components/app/tickets/ticket-attachments'
+import { TicketChecklist } from '@/components/app/tickets/ticket-checklist'
+import { TicketAssignees } from '@/components/app/tickets/ticket-assignees'
+import { TicketTimesheet } from '@/components/app/tickets/ticket-timesheet'
+import { ExcelActions } from '@/components/app/shared/excel-actions'
 import { Search, Plus, X, Send, Calendar, User as UserIcon } from 'lucide-react'
 import { format, formatDistanceToNow } from 'date-fns'
-import NepaliCalendar from '@sbmdkl/nepali-datepicker-reactjs'
-import '@sbmdkl/nepali-datepicker-reactjs/dist/index.css'
-import { formatBs, getTodayBs } from '@/lib/nepali-date'
-import { TicketAttachments } from '@/components/app/tickets/ticket-attachments'
 
 interface Ticket {
   id: string; title: string; uuid: string; description?: string
@@ -32,7 +33,7 @@ interface Ticket {
   project: { id: string; name: string; prefix: string; color: string }
   status: { id: string; name: string; color: string; isCompleted: boolean }
   priority: { id: string; name: string; color: string } | null
-  assignees: { userId: string; user: { id: string; name: string } }[]
+  assignees: { userId: string; user: { id: string; name: string; email?: string }; assignedBy?: { id: string; name: string } | null }[]
   createdBy: { id: string; name: string }
 }
 
@@ -60,6 +61,7 @@ function getInitials(name: string) {
 
 export function TicketsPage() {
   const { data: session } = useSession()
+  const { navigateToProject, navigateToBoard, setPage } = useAppStore()
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -87,7 +89,7 @@ export function TicketsPage() {
     const params = new URLSearchParams()
     if (search) params.set('search', search)
     if (filterProject && filterProject !== 'all') params.set('projectId', filterProject)
-      const res = await fetch(`/api/tickets?${params.toString()}&t=${Date.now()}`, { cache: 'no-store' })
+    const res = await fetch(`/api/tickets?${params}`)
     if (res.ok) setTickets(await res.json())
     setLoading(false)
   }, [search, filterProject])
@@ -181,6 +183,19 @@ export function TicketsPage() {
           </SelectContent>
         </Select>
         <Button onClick={openCreateDialog}><Plus className="h-4 w-4 mr-1.5" /> New Ticket</Button>
+        <ExcelActions
+          entityLabel="Tickets"
+          exportUrl="/api/tickets/export"
+          validateUrl="/api/tickets/import/validate"
+          commitUrl="/api/tickets/import/commit"
+          labelField="title"
+          subField="project"
+          onImported={loadTickets}
+          exportParams={{
+            ...(filterProject !== 'all' ? { projectId: filterProject } : {}),
+            ...(search ? { search } : {}),
+          }}
+        />
       </div>
 
       {loading ? (
@@ -197,7 +212,7 @@ export function TicketsPage() {
       ) : (
         <div className="grid gap-2">
           {tickets.map(ticket => {
-            const isOverdue = ticket.dueDate && ticket.dueDate < getTodayBs() && !ticket.status.isCompleted
+            const isOverdue = ticket.dueDate && new Date(ticket.dueDate) < new Date() && !ticket.status.isCompleted
             return (
               <Card key={ticket.id} className="hover:shadow-sm transition-shadow cursor-pointer" onClick={() => openDetail(ticket)}>
                 <CardContent className="p-4">
@@ -231,7 +246,7 @@ export function TicketsPage() {
                       )}
                       {ticket.dueDate && (
                         <span className={`text-xs flex items-center gap-1 ${isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}>
-                          <Calendar className="h-3 w-3" />{formatBs(ticket.dueDate, 'MMM D')}
+                          <Calendar className="h-3 w-3" />{format(new Date(ticket.dueDate), 'MMM d')}
                         </span>
                       )}
                     </div>
@@ -281,13 +296,7 @@ export function TicketsPage() {
             </div>
             <div className="space-y-2">
               <Label>Due Date</Label>
-              <NepaliCalendar
-                defaultDate={createForm.dueDate || ''}
-                onChange={({ bsDate }: { bsDate: string }) => setCreateForm(f => ({ ...f, dueDate: bsDate }))}
-                language="en"
-                dateFormat="YYYY-MM-DD"
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              />
+              <Input type="date" value={createForm.dueDate} onChange={e => setCreateForm(f => ({ ...f, dueDate: e.target.value }))} />
             </div>
             {createForm.projectId && members.length > 0 && (
               <div className="space-y-2">
@@ -317,6 +326,11 @@ export function TicketsPage() {
       {/* Ticket Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh]">
+          {!selectedTicket && (
+            <DialogHeader>
+              <DialogTitle className="sr-only">Ticket details</DialogTitle>
+            </DialogHeader>
+          )}
           {selectedTicket ? (
             <>
               <DialogHeader>
@@ -338,21 +352,16 @@ export function TicketsPage() {
               <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                 <div><span className="text-muted-foreground">Created by:</span> <span className="font-medium">{selectedTicket.createdBy.name}</span></div>
                 <div><span className="text-muted-foreground">Updated:</span> <span className="font-medium">{formatDistanceToNow(new Date(selectedTicket.updatedAt))} ago</span></div>
-                {selectedTicket.startDate && <div><span className="text-muted-foreground">Start:</span> <span className="font-medium">{formatBs(selectedTicket.startDate, 'MMM D, YYYY')}</span></div>}
-                {selectedTicket.dueDate && <div><span className="text-muted-foreground">Due:</span> <span className="font-medium">{formatBs(selectedTicket.dueDate, 'MMM D, YYYY')}</span></div>}
+                {selectedTicket.startDate && <div><span className="text-muted-foreground">Start:</span> <span className="font-medium">{format(new Date(selectedTicket.startDate), 'MMM d, yyyy')}</span></div>}
+                {selectedTicket.dueDate && <div><span className="text-muted-foreground">Due:</span> <span className="font-medium">{format(new Date(selectedTicket.dueDate), 'MMM d, yyyy')}</span></div>}
               </div>
-              {selectedTicket.assignees.length > 0 && (
-                <div className="flex items-center gap-2 mb-4">
-                  <UserIcon className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex -space-x-1.5">
-                    {selectedTicket.assignees.map(a => (
-                      <div key={a.userId} className="h-7 w-7 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center ring-2 ring-background" title={a.user.name}>
-                        {getInitials(a.user.name)}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <TicketAssignees ticketId={selectedTicket.id} initialAssignees={selectedTicket.assignees} />
+              <div className="border-t pt-4 mb-4">
+                <TicketChecklist ticketId={selectedTicket.id} />
+              </div>
+              <div className="border-t pt-4 mb-4">
+                <TicketTimesheet ticketId={selectedTicket.id} />
+              </div>
               <div className="border-t pt-4 mb-4">
                 <TicketAttachments ticketId={selectedTicket.id} />
               </div>
@@ -385,10 +394,7 @@ export function TicketsPage() {
               </div>
             </>
           ) : (
-            <>
-              <DialogTitle className="sr-only">Loading ticket details</DialogTitle>
-              <div className="flex items-center justify-center py-8"><Skeleton className="h-32 w-full" /></div>
-            </>
+            <div className="flex items-center justify-center py-8"><Skeleton className="h-32 w-full" /></div>
           )}
         </DialogContent>
       </Dialog>

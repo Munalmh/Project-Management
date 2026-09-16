@@ -12,6 +12,7 @@ const updateSchema = z.object({
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   status: z.string().optional(),
+  budgetHours: z.number().nonnegative().nullable().optional(),
 })
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -30,6 +31,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
           priority: true,
           assignees: { include: { user: { select: { id: true, name: true } } } },
           createdBy: { select: { name: true } },
+          timesheetEntries: { select: { hours: true } },
         },
         orderBy: { updatedAt: 'desc' },
       },
@@ -38,7 +40,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   })
 
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json(project)
+
+  const hoursLogged = project.tickets.reduce(
+    (sum, t) => sum + t.timesheetEntries.reduce((s, e) => s + e.hours, 0),
+    0
+  )
+
+  return NextResponse.json({ ...project, hoursLogged: Math.round(hoursLogged * 100) / 100 })
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -54,8 +62,15 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       where: { id },
       data: {
         ...data,
-        startDate: data.startDate ? new Date(data.startDate.replace(/ /g, '-')).toISOString() : null,
-        endDate: data.endDate ? new Date(data.endDate.replace(/ /g, '-')).toISOString() : null,
+        // Only touch startDate/endDate when they were actually included in the request —
+        // a bare `data.startDate ? ... : null` would silently wipe them on any partial
+        // update (e.g. just changing status) that omits those fields.
+        ...(data.startDate !== undefined
+          ? { startDate: data.startDate ? new Date(data.startDate.replace(/ /g, '-')).toISOString() : null }
+          : {}),
+        ...(data.endDate !== undefined
+          ? { endDate: data.endDate ? new Date(data.endDate.replace(/ /g, '-')).toISOString() : null }
+          : {}),
       },
       include: { _count: { select: { tickets: true, members: true } } },
     })

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -18,10 +18,12 @@ model User {
   updatedAt DateTime @updatedAt
 
   createdTickets  Ticket[]         @relation("TicketCreator")
-  assignedTickets TicketAssignee[]
+  assignedTickets TicketAssignee[] @relation("TicketAssignee_user")
+  assignmentsMade TicketAssignee[] @relation("TicketAssignee_assignedBy")
   comments        TicketComment[]
   projectMembers  ProjectMember[]
   uploadedAttachments Attachment[]
+  timesheetEntries TimesheetEntry[]
 }
 
 model Project {
@@ -33,6 +35,7 @@ model Project {
   startDate   DateTime?
   endDate     DateTime?
   status      String    @default("active")
+  budgetHours Float?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -98,6 +101,8 @@ model Ticket {
   assignees TicketAssignee[]
   comments  TicketComment[]
   attachments Attachment[]
+  checklistItems ChecklistItem[]
+  timesheetEntries TimesheetEntry[]
 }
 
 model Attachment {
@@ -114,13 +119,41 @@ model Attachment {
   uploadedBy User   @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
 }
 
-model TicketAssignee {
-  id       String @id @default(cuid())
-  ticketId String
-  userId   String
+model ChecklistItem {
+  id        String   @id @default(cuid())
+  ticketId  String
+  content   String
+  isDone    Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+model TimesheetEntry {
+  id        String   @id @default(cuid())
+  ticketId  String
+  userId    String
+  date      DateTime @db.Date
+  hours     Float
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TicketAssignee {
+  id           String   @id @default(cuid())
+  ticketId     String
+  userId       String
+  assignedAt   DateTime @default(now())
+  assignedById String?
+
+  ticket     Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user       User   @relation("TicketAssignee_user", fields: [userId], references: [id], onDelete: Cascade)
+  assignedBy User?  @relation("TicketAssignee_assignedBy", fields: [assignedById], references: [id])
 
   @@unique([ticketId, userId])
 }

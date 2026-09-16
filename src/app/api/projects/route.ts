@@ -11,6 +11,7 @@ const projectSchema = z.object({
   color: z.string().nullable().optional(),
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
+  budgetHours: z.number().nonnegative().nullable().optional(),
 })
 
 export async function GET() {

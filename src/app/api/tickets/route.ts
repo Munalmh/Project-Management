@@ -76,7 +76,7 @@ export async function POST(req: Request) {
         startDate: data.startDate ? new Date(data.startDate.replace(/ /g, '-')).toISOString() : null,
         dueDate: data.dueDate ? new Date(data.dueDate.replace(/ /g, '-')).toISOString() : null,
         assignees: data.assigneeIds
-          ? { create: data.assigneeIds.map((uid: string) => ({ userId: uid })) }
+          ? { create: data.assigneeIds.map((uid: string) => ({ userId: uid, assignedById: userId })) }
           : undefined,
       },
       include: {

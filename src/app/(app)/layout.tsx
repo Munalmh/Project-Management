@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import {
-  LayoutDashboard, FolderKanban, Columns3, Ticket, Users, LogOut, Menu, Moon, Sun, X,
+  LayoutDashboard, FolderKanban, Columns3, Ticket, Users, LogOut, Menu, Moon, Sun, X, BarChart3, UserCog,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { signOut } from 'next-auth/react'
@@ -27,6 +27,8 @@ const navItems = [
   { href: '/board', label: 'Kanban Board', icon: Columns3, exact: false },
   { href: '/tickets', label: 'Tickets', icon: Ticket, exact: false },
   { href: '/team', label: 'Team', icon: Users, exact: false },
+  { href: '/reports', label: 'Reports', icon: BarChart3, exact: false },
+  { href: '/workload', label: 'Workload', icon: UserCog, exact: false },
 ]
 
 function SidebarNav({ collapsed, onClose }: { collapsed?: boolean; onClose?: () => void }) {
