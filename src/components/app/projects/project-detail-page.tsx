@@ -402,6 +402,21 @@ export function ProjectDetailPage() {
     }
   }
 
+  async function handleDeleteTicket(ticketId: string, e?: React.MouseEvent) {
+    if (e) e.stopPropagation()
+    if (!confirm('Are you sure you want to delete this ticket?')) return
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast.success('Ticket deleted')
+        if (selectedTicket?.id === ticketId) setDetailDialogOpen(false)
+        loadProject()
+      } else {
+        toast.error('Failed to delete ticket')
+      }
+    } catch { toast.error('Failed to delete ticket') }
+  }
+
   function handleBoardTab() {
     router.push('/board')
   }
@@ -747,7 +762,7 @@ export function ProjectDetailPage() {
               {project.tickets.map((ticket) => (
                 <Card
                   key={ticket.id}
-                  className="cursor-pointer hover:shadow-sm transition-shadow"
+                  className="group cursor-pointer hover:shadow-sm transition-shadow"
                   onClick={() => openTicketDetail(ticket)}
                 >
                   <CardContent className="p-4">
@@ -797,6 +812,11 @@ export function ProjectDetailPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 sm:shrink-0">
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity mr-2">
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={(e) => handleDeleteTicket(ticket.id, e)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                         {ticket.assignees.length > 0 && (
                           <div className="flex -space-x-2">
                             {ticket.assignees.slice(0, 3).map((a) => (
@@ -1047,10 +1067,15 @@ export function ProjectDetailPage() {
           {selectedTicket && (
             <>
               <DialogHeader>
-                <div className="flex items-center gap-2">
-                  <DialogTitle className="text-base">
-                    {selectedTicket.title}
-                  </DialogTitle>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <DialogTitle className="text-base">
+                      {selectedTicket.title}
+                    </DialogTitle>
+                  </div>
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteTicket(selectedTicket.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
                 <DialogDescription className="font-mono text-xs">
                   {project.prefix}-{selectedTicket.uuid.slice(0, 6)}

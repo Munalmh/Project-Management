@@ -24,7 +24,7 @@ import { TicketChecklist } from '@/components/app/tickets/ticket-checklist'
 import { TicketAssignees } from '@/components/app/tickets/ticket-assignees'
 import { TicketTimesheet } from '@/components/app/tickets/ticket-timesheet'
 import { ExcelActions } from '@/components/app/shared/excel-actions'
-import { Search, Plus, X, Send, Calendar, User as UserIcon } from 'lucide-react'
+import { Search, Plus, X, Send, Calendar, User as UserIcon, Trash2 } from 'lucide-react'
 import { format, formatDistanceToNow } from 'date-fns'
 
 interface Ticket {
@@ -163,6 +163,21 @@ export function TicketsPage() {
     setCommentLoading(false)
   }
 
+  async function deleteTicket(id: string, e?: React.MouseEvent) {
+    if (e) e.stopPropagation()
+    if (!confirm('Are you sure you want to delete this ticket?')) return
+    try {
+      const res = await fetch(`/api/tickets/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast.success('Ticket deleted')
+        if (selectedTicket?.id === id) setDetailOpen(false)
+        queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      } else {
+        toast.error('Failed to delete ticket')
+      }
+    } catch { toast.error('Failed to delete ticket') }
+  }
+
   useEffect(() => {
     if (createForm.projectId) {
       fetch(`/api/projects/${createForm.projectId}`).then(r => r.json()).then(p => {
@@ -224,7 +239,7 @@ export function TicketsPage() {
           {tickets.map(ticket => {
             const isOverdue = ticket.dueDate && new Date(ticket.dueDate) < new Date() && !ticket.status.isCompleted
             return (
-              <Card key={ticket.id} className="hover:shadow-sm transition-shadow cursor-pointer" onClick={() => openDetail(ticket)}>
+              <Card key={ticket.id} className="group hover:shadow-sm transition-shadow cursor-pointer" onClick={() => openDetail(ticket)}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3 flex-wrap">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -232,6 +247,11 @@ export function TicketsPage() {
                         {ticket.project.prefix}-{ticket.uuid.slice(0, 6)}
                       </span>
                       <span className="text-sm font-medium truncate">{ticket.title}</span>
+                    </div>
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={(e) => deleteTicket(ticket.id, e)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Badge variant="outline" className="text-[10px]" style={{ borderColor: ticket.project.color, color: ticket.project.color }}>
@@ -344,11 +364,16 @@ export function TicketsPage() {
           {selectedTicket ? (
             <>
               <DialogHeader>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Badge variant="outline" style={{ borderColor: selectedTicket.project.color, color: selectedTicket.project.color }}>
-                    {selectedTicket.project.prefix}-{selectedTicket.uuid.slice(0, 6)}
-                  </Badge>
-                  <span>{selectedTicket.project.name}</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Badge variant="outline" style={{ borderColor: selectedTicket.project.color, color: selectedTicket.project.color }}>
+                      {selectedTicket.project.prefix}-{selectedTicket.uuid.slice(0, 6)}
+                    </Badge>
+                    <span>{selectedTicket.project.name}</span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => deleteTicket(selectedTicket.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
                 <DialogTitle className="text-lg">{selectedTicket.title}</DialogTitle>
               </DialogHeader>
