@@ -200,7 +200,7 @@ export function TicketsPage() {
           commitUrl="/api/tickets/import/commit"
           labelField="title"
           subField="project"
-          onImported={loadTickets}
+          onImported={() => queryClient.invalidateQueries({ queryKey: ['tickets'] })}
           exportParams={{
             ...(filterProject !== 'all' ? { projectId: filterProject } : {}),
             ...(search ? { search } : {}),
