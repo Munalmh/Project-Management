@@ -20,9 +20,42 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Could not read that file. Make sure it is a valid .xlsx file.' }, { status: 400 })
   }
 
-  const sheet = workbook.getWorksheet('Tickets') ?? workbook.worksheets[0]
+  let sheet = workbook.getWorksheet('Tickets')
+  
   if (!sheet) {
-    return NextResponse.json({ error: 'No "Tickets" sheet found in the uploaded file.' }, { status: 400 })
+    for (const ws of workbook.worksheets) {
+      const headerRow = ws.getRow(1).values as any[]
+      const actualHeaders = (Array.isArray(headerRow) ? headerRow.slice(1) : []).map(h => {
+        let v = h
+        if (v && typeof v === 'object' && 'text' in v) v = v.text
+        return String(v || '').trim()
+      })
+      if (actualHeaders[0] === TICKET_HEADERS[0] && actualHeaders[1] === TICKET_HEADERS[1]) {
+        sheet = ws
+        break
+      }
+    }
+  }
+
+  if (!sheet) {
+    sheet = workbook.worksheets[0]
+  }
+
+  if (!sheet) {
+    return NextResponse.json({ error: 'No data sheet found in the uploaded file.' }, { status: 400 })
+  }
+
+  const headerRow = sheet.getRow(1).values as any[]
+  const actualHeaders = (Array.isArray(headerRow) ? headerRow.slice(1) : []).map(h => {
+    let v = h
+    if (v && typeof v === 'object' && 'text' in v) v = v.text
+    return String(v || '').trim()
+  })
+
+  if (actualHeaders[0] !== TICKET_HEADERS[0] || actualHeaders[1] !== TICKET_HEADERS[1]) {
+    return NextResponse.json({ 
+      error: 'Invalid template format. Are you sure you uploaded a Tickets template? Please use the "Template" button to get the correct format.' 
+    }, { status: 400 })
   }
 
   const rawRows = readRows(sheet, TICKET_HEADERS.length)
