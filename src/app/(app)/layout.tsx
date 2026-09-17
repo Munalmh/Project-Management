@@ -4,7 +4,6 @@ import { useEffect } from 'react'
 import { useSession, SessionProvider } from 'next-auth/react'
 import { QueryProvider } from '@/components/providers/query-provider'
 import { useAppStore } from '@/store/app-store'
-import { LoginPage } from '@/components/app/auth/login-page'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -128,8 +127,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
       </div>
     )
   }
-
-  if (!session) return <LoginPage />
 
   return (
     <div className="min-h-screen flex bg-background">

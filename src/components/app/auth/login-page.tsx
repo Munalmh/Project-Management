@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +28,7 @@ const heroStats = [
 ]
 
 export function LoginPage() {
+  const router = useRouter()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -50,8 +52,12 @@ export function LoginPage() {
     const result = await signIn('credentials', { email, password, redirect: false })
     if (result?.error) {
       toast.error('Invalid email or password')
+      setLoading(false)
+    } else {
+      toast.success('Signed in successfully!')
+      router.push('/dashboard')
+      router.refresh()
     }
-    setLoading(false)
   }
 
   async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
@@ -88,11 +94,15 @@ export function LoginPage() {
       if (!result?.ok) {
         toast.error('Account created but auto-login failed. Please sign in manually.')
         setMode('login')
+        setLoading(false)
+      } else {
+        router.push('/dashboard')
+        router.refresh()
       }
     } else {
       toast.error(data.error || 'Registration failed')
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
