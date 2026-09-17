@@ -3,6 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { z } from 'zod'
+import { Resend } from 'resend'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 const ticketSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -83,10 +86,31 @@ export async function POST(req: Request) {
         project: { select: { name: true, prefix: true, color: true } },
         status: true,
         priority: true,
-        assignees: { include: { user: { select: { id: true, name: true } } } },
+        assignees: { include: { user: { select: { id: true, name: true, email: true } } } },
         createdBy: { select: { name: true } },
       },
     })
+
+    if (ticket.assignees && ticket.assignees.length > 0) {
+      for (const assignee of ticket.assignees) {
+        if (assignee.user.email) {
+          try {
+            await resend.emails.send({
+              from: 'onboarding@resend.dev',
+              to: assignee.user.email,
+              subject: `New Ticket Assigned: ${ticket.title}`,
+              html: `<p>Hello ${assignee.user.name},</p>
+                     <p>You have been assigned to a new ticket in <strong>${ticket.project.name}</strong>.</p>
+                     <p><strong>Title:</strong> ${ticket.title}</p>
+                     <p><strong>Description:</strong> ${ticket.description || 'No description provided'}</p>`
+            })
+            console.log(`Email sent successfully to ${assignee.user.email}`)
+          } catch (emailError) {
+            console.error('Failed to send email:', emailError)
+          }
+        }
+      }
+    }
 
     return NextResponse.json(ticket, { status: 201 })
   } catch (error: unknown) {
