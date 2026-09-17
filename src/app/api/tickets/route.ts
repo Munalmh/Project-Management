@@ -1,3 +1,4 @@
+// Force update at the very top of route.ts.
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -95,7 +96,7 @@ export async function POST(req: Request) {
       for (const assignee of ticket.assignees) {
         if (assignee.user.email) {
           try {
-            await resend.emails.send({
+            const { data, error } = await resend.emails.send({
               from: 'onboarding@resend.dev',
               to: assignee.user.email,
               subject: `New Ticket Assigned: ${ticket.title}`,
@@ -104,9 +105,14 @@ export async function POST(req: Request) {
                      <p><strong>Title:</strong> ${ticket.title}</p>
                      <p><strong>Description:</strong> ${ticket.description || 'No description provided'}</p>`
             })
-            console.log(`Email sent successfully to ${assignee.user.email}`)
+            
+            if (error) {
+              console.error(`Failed to send email to ${assignee.user.email}:`, error)
+            } else {
+              console.log(`Email sent successfully to ${assignee.user.email}`, data)
+            }
           } catch (emailError) {
-            console.error('Failed to send email:', emailError)
+            console.error('Exception while sending email:', emailError)
           }
         }
       }
