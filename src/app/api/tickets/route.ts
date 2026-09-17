@@ -96,14 +96,64 @@ export async function POST(req: Request) {
       for (const assignee of ticket.assignees) {
         if (assignee.user.email) {
           try {
+            const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f9fafb; margin: 0; padding: 40px 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+    
+    <!-- Header -->
+    <div style="background-color: #111827; padding: 24px;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td width="48" valign="middle">
+            <div style="background-color: #a3e635; color: #111827; font-weight: bold; font-size: 20px; width: 48px; height: 48px; border-radius: 8px; text-align: center; line-height: 48px;">
+              P
+            </div>
+          </td>
+          <td valign="middle" style="padding-left: 16px;">
+            <div style="color: #ffffff; font-size: 20px; font-weight: bold; margin: 0 0 4px 0;">ProjectHub</div>
+            <div style="color: #a3e635; font-size: 11px; font-weight: bold; letter-spacing: 0.05em; text-transform: uppercase;">PROJECT PORTAL</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+    
+    <!-- Content -->
+    <div style="padding: 32px 24px; color: #374151;">
+      <p style="font-size: 16px; margin: 0 0 24px 0;">Hi ${assignee.user.name},</p>
+      
+      <p style="font-size: 16px; margin: 0 0 24px 0;">
+        <strong>${ticket.createdBy.name || 'Someone'}</strong> assigned you a ticket in <strong>${ticket.project.name}</strong>:
+      </p>
+      
+      <!-- Ticket Card -->
+      <div style="border: 1px solid #e5e7eb; border-left: 4px solid #a3e635; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+        <p style="font-weight: 600; font-size: 16px; color: #111827; margin: 0 0 8px 0;">${ticket.title}</p>
+        ${ticket.dueDate ? `<p style="margin: 0; font-size: 14px; color: #6b7280;">Due ${new Date(ticket.dueDate).toISOString().split('T')[0]}</p>` : ''}
+      </div>
+      
+      <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}" style="display: inline-block; background-color: #111827; color: #ffffff; font-weight: 600; font-size: 14px; text-decoration: none; padding: 12px 24px; border-radius: 6px;">View ticket</a>
+    </div>
+    
+    <!-- Footer -->
+    <div style="border-top: 1px solid #e5e7eb; padding: 16px 24px; color: #9ca3af; font-size: 13px; background-color: #ffffff;">
+      You're receiving this because you're a member of a project on ProjectHub.
+    </div>
+    
+  </div>
+</body>
+</html>
+            `;
+
             const { data, error } = await resend.emails.send({
-              from: 'onboarding@resend.dev',
+              from: 'ProjectHub <onboarding@resend.dev>',
               to: assignee.user.email,
               subject: `New Ticket Assigned: ${ticket.title}`,
-              html: `<p>Hello ${assignee.user.name},</p>
-                     <p>You have been assigned to a new ticket in <strong>${ticket.project.name}</strong>.</p>
-                     <p><strong>Title:</strong> ${ticket.title}</p>
-                     <p><strong>Description:</strong> ${ticket.description || 'No description provided'}</p>`
+              html: emailHtml
             })
             
             if (error) {
