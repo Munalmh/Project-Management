@@ -98,7 +98,14 @@ export function ProjectsPage() {
 
   async function handleCreateProject(e: React.FormEvent) {
     e.preventDefault()
-    if (!formName.trim()) return
+    if (!formName.trim()) {
+      toast.error("Project Name is required.")
+      return
+    }
+    if (!formPrefix.trim()) {
+      toast.error("Project Prefix is required.")
+      return
+    }
 
     setCreating(true)
     try {
@@ -200,7 +207,6 @@ export function ProjectsPage() {
                       }
                     }}
                     placeholder="My Project"
-                    required
                   />
                 </div>
                 <div className="grid gap-2">
@@ -221,7 +227,6 @@ export function ProjectsPage() {
                     onChange={(e) => setFormPrefix(e.target.value.toUpperCase())}
                     placeholder="PRJ"
                     maxLength={6}
-                    required
                   />
                 </div>
                 <div className="grid gap-2">

@@ -293,7 +293,14 @@ export function ProjectDetailPage() {
 
   async function handleCreateTicket(e: React.FormEvent) {
     e.preventDefault()
-    if (!ticketForm.title.trim() || !projectId) return
+    if (!ticketForm.title.trim()) {
+      toast.error("Ticket Title is required.")
+      return
+    }
+    if (!projectId) {
+      toast.error("Project ID is missing.")
+      return
+    }
     setCreatingTicket(true)
     try {
       const res = await fetch('/api/tickets', {
@@ -804,7 +811,6 @@ export function ProjectDetailPage() {
                   value={ticketForm.title}
                   onChange={(e) => setTicketForm((p) => ({ ...p, title: e.target.value }))}
                   placeholder="Ticket title"
-                  required
                 />
               </div>
               <div className="grid gap-2">

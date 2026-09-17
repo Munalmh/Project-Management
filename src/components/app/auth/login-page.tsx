@@ -33,11 +33,20 @@ export function LoginPage() {
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setLoading(true)
     const formData = new FormData(e.currentTarget)
     const email = formData.get('email') as string
     const password = formData.get('password') as string
 
+    if (!email.trim()) {
+      toast.error('Email is required.')
+      return
+    }
+    if (!password.trim()) {
+      toast.error('Password is required.')
+      return
+    }
+
+    setLoading(true)
     const result = await signIn('credentials', { email, password, redirect: false })
     if (result?.error) {
       toast.error('Invalid email or password')
@@ -47,12 +56,25 @@ export function LoginPage() {
 
   async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setLoading(true)
     const formData = new FormData(e.currentTarget)
     const name = formData.get('name') as string
     const email = formData.get('email') as string
     const password = formData.get('password') as string
 
+    if (!name.trim()) {
+      toast.error('Name is required.')
+      return
+    }
+    if (!email.trim()) {
+      toast.error('Email is required.')
+      return
+    }
+    if (!password.trim()) {
+      toast.error('Password is required.')
+      return
+    }
+
+    setLoading(true)
     const res = await fetch('/api/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
