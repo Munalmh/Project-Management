@@ -138,7 +138,7 @@ function getInitials(name: string): string {
 export function ProjectDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
-  const { setSelectedProject } = useAppStore()
+  const { setSelectedProject, user: currentUser } = useAppStore()
   const projectId = params?.id
 
   const [project, setProject] = useState<ProjectDetail | null>(null)
