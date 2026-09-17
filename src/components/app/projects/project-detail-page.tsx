@@ -15,6 +15,7 @@ import {
   Loader2,
   X,
   BarChart3,
+  Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store/app-store'
@@ -165,6 +166,7 @@ export function ProjectDetailPage() {
   const [addMemberForm, setAddMemberForm] = useState({ userId: '', role: 'member' })
   const [addingMember, setAddingMember] = useState(false)
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null)
+  const [deletingProject, setDeletingProject] = useState(false)
 
   // Ticket detail dialog
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
@@ -270,6 +272,23 @@ export function ProjectDetailPage() {
       toast.error(err instanceof Error ? err.message : 'Failed to remove member')
     } finally {
       setRemovingMemberId(null)
+    }
+  }
+
+  async function handleDeleteProject() {
+    if (!confirm('Are you sure you want to delete this project? This action cannot be undone.')) return
+    
+    setDeletingProject(true)
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Failed to delete project')
+      toast.success('Project deleted')
+      router.push('/projects')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete project')
+      setDeletingProject(false)
     }
   }
 
@@ -472,6 +491,24 @@ export function ProjectDetailPage() {
           <Badge variant="secondary" className="capitalize">
             {project.status}
           </Badge>
+          {(currentUser?.role === 'admin' || currentUser?.role === 'manager') && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
+              onClick={handleDeleteProject}
+              disabled={deletingProject}
+            >
+              {deletingProject ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-1.5" />
+                  Delete Project
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
 
