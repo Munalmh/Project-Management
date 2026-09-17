@@ -733,17 +733,21 @@ export function ProjectDetailPage() {
                           >
                             {ticket.status.name}
                           </Badge>
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px]"
-                            style={{
-                              backgroundColor: `${ticket.priority.color}20`,
-                              color: ticket.priority.color,
-                              borderColor: `${ticket.priority.color}30`,
-                            }}
-                          >
-                            {ticket.priority.name}
-                          </Badge>
+                          {ticket.priority ? (
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px]"
+                              style={{
+                                backgroundColor: `${ticket.priority.color}20`,
+                                color: ticket.priority.color,
+                                borderColor: `${ticket.priority.color}30`,
+                              }}
+                            >
+                              {ticket.priority.name}
+                            </Badge>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">-</span>
+                          )}
                           {ticket.dueDate && (
                             <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                               <CalendarDays className="h-3 w-3" />
@@ -1027,17 +1031,19 @@ export function ProjectDetailPage() {
                   >
                     {selectedTicket.status.name}
                   </Badge>
-                  <Badge
-                    variant="secondary"
-                    className="text-xs"
-                    style={{
-                      backgroundColor: `${selectedTicket.priority.color}20`,
-                      color: selectedTicket.priority.color,
-                      borderColor: `${selectedTicket.priority.color}30`,
-                    }}
-                  >
-                    {selectedTicket.priority.name}
-                  </Badge>
+                  {selectedTicket.priority ? (
+                    <Badge
+                      variant="secondary"
+                      className="text-xs"
+                      style={{
+                        backgroundColor: `${selectedTicket.priority.color}20`,
+                        color: selectedTicket.priority.color,
+                        borderColor: `${selectedTicket.priority.color}30`,
+                      }}
+                    >
+                      {selectedTicket.priority.name}
+                    </Badge>
+                  ) : null}
                 </div>
 
                 {selectedTicket.description && (

@@ -256,17 +256,21 @@ export function DashboardPage() {
                         </Badge>
                       </td>
                       <td className="py-3 pr-4">
-                        <Badge
-                          variant="secondary"
-                          className="text-xs"
-                          style={{
-                            backgroundColor: `${ticket.priority.color}20`,
-                            color: ticket.priority.color,
-                            borderColor: `${ticket.priority.color}30`,
-                          }}
-                        >
-                          {ticket.priority.name}
-                        </Badge>
+                        {ticket.priority ? (
+                          <Badge
+                            variant="secondary"
+                            className="text-xs"
+                            style={{
+                              backgroundColor: `${ticket.priority.color}20`,
+                              color: ticket.priority.color,
+                              borderColor: `${ticket.priority.color}30`,
+                            }}
+                          >
+                            {ticket.priority.name}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
                       </td>
                       <td className="py-3 pr-4 hidden lg:table-cell">
                         <div className="flex -space-x-2">
