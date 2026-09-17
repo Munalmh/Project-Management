@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '@/store/app-store'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
@@ -62,11 +63,8 @@ function getInitials(name: string) {
 export function TicketsPage() {
   const { data: session } = useSession()
   const { navigateToProject, navigateToBoard, setPage } = useAppStore()
-  const [tickets, setTickets] = useState<Ticket[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
-  const [projects, setProjects] = useState<Project[]>([])
-  const [priorities, setPriorities] = useState<Priority[]>([])
   const [filterProject, setFilterProject] = useState<string>('all')
 
   // Create dialog
@@ -84,24 +82,36 @@ export function TicketsPage() {
   const [newComment, setNewComment] = useState('')
   const [commentLoading, setCommentLoading] = useState(false)
 
-  const loadTickets = useCallback(async () => {
-    setLoading(true)
-    const params = new URLSearchParams()
-    if (search) params.set('search', search)
-    if (filterProject && filterProject !== 'all') params.set('projectId', filterProject)
-    const res = await fetch(`/api/tickets?${params}`)
-    if (res.ok) setTickets(await res.json())
-    setLoading(false)
-  }, [search, filterProject])
+  const {
+    data: tickets = [],
+    isLoading: loading,
+  } = useQuery<Ticket[]>({
+    queryKey: ['tickets', search, filterProject],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (search) params.set('search', search)
+      if (filterProject && filterProject !== 'all') params.set('projectId', filterProject)
+      const res = await fetch(`/api/tickets?${params}`)
+      if (!res.ok) throw new Error('Failed to load tickets')
+      return res.json()
+    },
+  })
 
-  /* eslint-disable */
-  useEffect(() => { loadTickets() }, [loadTickets])
-  /* eslint-enable */
+  const { data: projects = [] } = useQuery<Project[]>({
+    queryKey: ['projects'],
+    queryFn: async () => {
+      const res = await fetch('/api/projects')
+      return res.json()
+    },
+  })
 
-  useEffect(() => {
-    fetch('/api/projects').then(r => r.json()).then(setProjects)
-    fetch('/api/priorities').then(r => r.json()).then(setPriorities)
-  }, [])
+  const { data: priorities = [] } = useQuery<Priority[]>({
+    queryKey: ['priorities'],
+    queryFn: async () => {
+      const res = await fetch('/api/priorities')
+      return res.json()
+    },
+  })
 
   async function openCreateDialog() {
     setCreateForm({ title: '', description: '', projectId: '', statusId: '', priorityId: '', dueDate: '' })
@@ -118,7 +128,7 @@ export function TicketsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...createForm, assigneeIds: selectedAssignees }),
       })
-      if (res.ok) { toast.success('Ticket created'); setCreateOpen(false); loadTickets() }
+      if (res.ok) { toast.success('Ticket created'); setCreateOpen(false); queryClient.invalidateQueries({ queryKey: ['tickets'] }) }
       else { const d = await res.json(); toast.error(d.error) }
     } catch { toast.error('Failed to create ticket') }
     setCreateLoading(false)

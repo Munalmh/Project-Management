@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -31,8 +32,7 @@ const roleColors: Record<string, string> = { admin: 'bg-red-100 text-red-700 dar
 
 export function TeamPage() {
   const { data: session } = useSession()
-  const [users, setUsers] = useState<TeamUser[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<TeamUser | null>(null)
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'member' })
@@ -41,15 +41,17 @@ export function TeamPage() {
 
   const isAdmin = (session?.user as { role: string } | undefined)?.role === 'admin'
 
-  async function loadUsers() {
-    const res = await fetch('/api/users')
-    if (res.ok) setUsers(await res.json())
-    setLoading(false)
-  }
-
-  /* eslint-disable */
-  useEffect(() => { setLoading(true); loadUsers() }, [])
-  /* eslint-enable */
+  const {
+    data: users = [],
+    isLoading: loading,
+  } = useQuery<TeamUser[]>({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const res = await fetch('/api/users')
+      if (!res.ok) throw new Error('Failed to load users')
+      return res.json()
+    },
+  })
 
   function openCreate() {
     setEditingUser(null)
@@ -70,12 +72,18 @@ export function TeamPage() {
         const body: Record<string, string> = { name: form.name, email: form.email, role: form.role }
         if (form.password) body.password = form.password
         const res = await fetch(`/api/users/${editingUser.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-        if (res.ok) { toast.success('User updated'); setDialogOpen(false); loadUsers() }
-        else { const d = await res.json(); toast.error(d.error) }
+        if (res.ok) {
+          toast.success('User updated')
+          setDialogOpen(false)
+          queryClient.invalidateQueries({ queryKey: ['users'] })
+        } else { const d = await res.json(); toast.error(d.error) }
       } else {
         const res = await fetch('/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
-        if (res.ok) { toast.success('User created'); setDialogOpen(false); loadUsers() }
-        else { const d = await res.json(); toast.error(d.error) }
+        if (res.ok) {
+          toast.success('User created')
+          setDialogOpen(false)
+          queryClient.invalidateQueries({ queryKey: ['users'] })
+        } else { const d = await res.json(); toast.error(d.error) }
       }
     } catch { toast.error('Operation failed') }
     setSaving(false)
@@ -85,7 +93,7 @@ export function TeamPage() {
     if (!deleteId) return
     try {
       const res = await fetch(`/api/users/${deleteId}`, { method: 'DELETE' })
-      if (res.ok) { toast.success('User deleted'); setDeleteId(null); loadUsers() }
+      if (res.ok) { toast.success('User deleted'); setDeleteId(null); queryClient.invalidateQueries({ queryKey: ['users'] }) }
       else toast.error('Failed to delete user')
     } catch { toast.error('Failed to delete user') }
   }

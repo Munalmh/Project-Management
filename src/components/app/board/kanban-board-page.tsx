@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '@/store/app-store'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -118,33 +119,38 @@ export function KanbanBoardPage() {
   const { data: session } = useSession()
   const { selectedProjectId, setSelectedProject } = useAppStore()
   const router = useRouter()
-  const [projects, setProjects] = useState<Project[]>([])
+  const queryClient = useQueryClient()
+  
   const [project, setProject] = useState<Project | null>(null)
-  const [loading, setLoading] = useState(true)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null)
   const [initialStatusId, setInitialStatusId] = useState<string | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
-  const loadProjects = useCallback(async () => {
-    const res = await fetch('/api/projects', { cache: 'no-store' })
-    if (res.ok) setProjects(await res.json())
-  }, [])
+  const { data: projects = [] } = useQuery<Project[]>({
+    queryKey: ['projects'],
+    queryFn: async () => {
+      const res = await fetch('/api/projects')
+      return res.json()
+    },
+  })
 
-  const loadProject = useCallback(async (id: string) => {
-    const res = await fetch(`/api/projects/${id}?t=${Date.now()}`, { cache: 'no-store' })
-    if (res.ok) setProject(await res.json())
-    setLoading(false)
-  }, [])
+  const { data: serverProject, isLoading: loading } = useQuery<Project | null>({
+    queryKey: ['project', selectedProjectId],
+    queryFn: async () => {
+      if (!selectedProjectId) return null
+      const res = await fetch(`/api/projects/${selectedProjectId}`)
+      if (!res.ok) throw new Error('Failed to load project')
+      return res.json()
+    },
+    enabled: !!selectedProjectId,
+  })
 
-  /* eslint-disable */
-  useEffect(() => { loadProjects() }, [loadProjects])
   useEffect(() => {
-    if (selectedProjectId) { setLoading(true); loadProject(selectedProjectId) }
-    else { setProject(null); setLoading(false) }
-  }, [selectedProjectId, loadProject])
-  /* eslint-enable */
+    if (serverProject) setProject(serverProject)
+    else setProject(null)
+  }, [serverProject])
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(event.active.id as string)
@@ -213,6 +219,9 @@ export function KanbanBoardPage() {
         if (!res.ok) {
           toast.error('Failed to move ticket')
           setProject(prev => prev ? { ...prev, tickets: prev.tickets.map(t => t.id === ticketId ? { ...t, statusId: startStatusId } : t) } : prev)
+        } else {
+          // Sync server query data silently
+          queryClient.invalidateQueries({ queryKey: ['project', selectedProjectId] })
         }
       } catch {
         toast.error('Failed to move ticket')

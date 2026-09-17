@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useSession, SessionProvider } from 'next-auth/react'
+import { QueryProvider } from '@/components/providers/query-provider'
 import { useAppStore } from '@/store/app-store'
 import { LoginPage } from '@/components/app/auth/login-page'
 import { Button } from '@/components/ui/button'
@@ -170,7 +171,9 @@ function AppContent({ children }: { children: React.ReactNode }) {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <AppContent>{children}</AppContent>
+      <QueryProvider>
+        <AppContent>{children}</AppContent>
+      </QueryProvider>
     </SessionProvider>
   )
 }

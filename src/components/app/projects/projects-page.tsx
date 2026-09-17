@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import NepaliCalendar from '@sbmdkl/nepali-datepicker-reactjs'
 import '@sbmdkl/nepali-datepicker-reactjs/dist/index.css'
 import { formatBs } from '@/lib/nepali-date'
@@ -54,9 +55,7 @@ const PREDEFINED_COLORS = [
 
 export function ProjectsPage() {
   const router = useRouter()
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [creating, setCreating] = useState(false)
 
@@ -69,22 +68,18 @@ export function ProjectsPage() {
   const [formEndDate, setFormEndDate] = useState('')
   const [formBudgetHours, setFormBudgetHours] = useState('')
 
-  const loadProjects = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/projects?t=${Date.now()}`, { cache: 'no-store' })
+  const {
+    data: projects = [],
+    isLoading: loading,
+    error,
+  } = useQuery<Project[]>({
+    queryKey: ['projects'],
+    queryFn: async () => {
+      const res = await fetch('/api/projects')
       if (!res.ok) throw new Error('Failed to load projects')
-      const json = await res.json()
-      setProjects(Array.isArray(json) ? json : [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadProjects()
-  }, [loadProjects])
+      return res.json()
+    },
+  })
 
   function resetForm() {
     setFormName('')
@@ -127,10 +122,10 @@ export function ProjectsPage() {
         throw new Error(data.error || 'Failed to create project')
       }
       const created = await res.json()
-      setProjects((prev) => [created, ...prev])
-      toast.success('Project created successfully')
-      setDialogOpen(false)
+      toast.success('Project created')
       resetForm()
+      setDialogOpen(false)
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create project')
     } finally {
@@ -140,8 +135,8 @@ export function ProjectsPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">{error}</p>
+      <div className="flex items-center justify-center h-64 text-destructive">
+        <p>{error instanceof Error ? error.message : 'Error loading projects'}</p>
       </div>
     )
   }
@@ -166,7 +161,7 @@ export function ProjectsPage() {
           commitUrl="/api/projects/import/commit"
           labelField="name"
           subField="prefix"
-          onImported={loadProjects}
+          onImported={() => queryClient.invalidateQueries({ queryKey: ['projects'] })}
         />
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           setDialogOpen(open)

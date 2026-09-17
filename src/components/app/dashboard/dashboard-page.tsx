@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import {
   PieChart,
@@ -59,48 +59,21 @@ function getInitials(name: string): string {
 
 export function DashboardPage() {
   const { data: session } = useSession()
-  const [data, setData] = useState<DashboardData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadDashboard() {
-      try {
-        const res = await fetch('/api/dashboard', { cache: 'no-store' })
-        if (!res.ok) throw new Error('Failed to load dashboard')
-        const json = await res.json()
-        if (!cancelled) setData(json)
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Unknown error')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    // Initial load
-    loadDashboard()
-
-    // Refresh whenever the tab/window regains focus or becomes visible again,
-    // so numbers stay current after moving tickets elsewhere without
-    // requiring a full page reload.
-    function handleVisible() {
-      if (document.visibilityState === 'visible') loadDashboard()
-    }
-    window.addEventListener('focus', loadDashboard)
-    document.addEventListener('visibilitychange', handleVisible)
-
-    // Light periodic refresh as a fallback for long idle sessions.
-    const interval = setInterval(loadDashboard, 60_000)
-
-    return () => {
-      cancelled = true
-      window.removeEventListener('focus', loadDashboard)
-      document.removeEventListener('visibilitychange', handleVisible)
-      clearInterval(interval)
-    }
-  }, [])
+  const {
+    data,
+    isLoading: loading,
+    error,
+  } = useQuery<DashboardData>({
+    queryKey: ['dashboard'],
+    queryFn: async () => {
+      const res = await fetch('/api/dashboard')
+      if (!res.ok) throw new Error('Failed to load dashboard')
+      return res.json()
+    },
+    refetchInterval: 60000,
+    refetchOnWindowFocus: true,
+  })
 
   const statCards = [
     {
@@ -135,8 +108,8 @@ export function DashboardPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">{error}</p>
+      <div className="flex items-center justify-center h-64 text-destructive">
+        <p>{error instanceof Error ? error.message : 'Error loading dashboard'}</p>
       </div>
     )
   }
