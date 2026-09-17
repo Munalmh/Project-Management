@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
+import { useSession } from 'next-auth/react'
 import {
   ArrowLeft,
   Plus,
@@ -138,7 +139,9 @@ function getInitials(name: string): string {
 export function ProjectDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
-  const { setSelectedProject, user: currentUser } = useAppStore()
+  const { setSelectedProject } = useAppStore()
+  const { data: session } = useSession()
+  const currentUser = session?.user
   const projectId = params?.id
 
   const [project, setProject] = useState<ProjectDetail | null>(null)
