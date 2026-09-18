@@ -42,8 +42,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     try {
-        const blob = await put(`tickets/${id}/${Date.now()}-${file.name}`, file, {
+        const buffer = Buffer.from(await file.arrayBuffer())
+        const blob = await put(`tickets/${id}/${Date.now()}-${file.name}`, buffer, {
             access: 'public',
+            contentType: file.type || 'application/octet-stream',
         })
 
         const attachment = await db.attachment.create({
@@ -61,6 +63,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         return NextResponse.json(attachment, { status: 201 })
     } catch (err) {
         console.error('Attachment upload failed:', err)
-        return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+        return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 })
     }
 }
