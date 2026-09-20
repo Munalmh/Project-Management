@@ -74,3 +74,5 @@ dewakoding-project-management/
 # bun.lock is included for reproducibility
 tool-results/
 .env*
+
+*.sql
