@@ -50,7 +50,35 @@ Follow these instructions to set up and run the project locally.
    NEXTAUTH_URL="http://localhost:3000"
    ```
 
-4. **Initialize the database:**
+4. **Set up a Local Database (Keep Data Local):**
+
+   By default, this project uses MySQL. To keep your data locally on your machine instead of using a cloud database, you have two main options:
+
+   **Option A: Local MySQL via Docker (Recommended)**
+   If you have Docker installed, you can quickly spin up a local MySQL instance:
+   ```bash
+   docker run --name projecthub-mysql -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=mydb -p 3306:3306 -d mysql:8.0
+   ```
+   Then update your `.env` file:
+   ```env
+   DATABASE_URL="mysql://root:password@localhost:3306/mydb"
+   ```
+
+   **Option B: Switch to Local SQLite (Easiest)**
+   If you don't want to install Docker or MySQL, you can use SQLite (which stores data in a local file).
+   1. Open `prisma/schema.prisma` and change the datasource:
+      ```prisma
+      datasource db {
+        provider = "sqlite"
+        url      = env("DATABASE_URL")
+      }
+      ```
+   2. Update your `.env` file:
+      ```env
+      DATABASE_URL="file:./dev.db"
+      ```
+
+5. **Initialize the database:**
 
    Generate the Prisma client and push the schema to your database:
    ```bash
