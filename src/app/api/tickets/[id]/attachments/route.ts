@@ -30,6 +30,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const ticket = await db.ticket.findUnique({ where: { id } })
     if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
 
+    // Check if the user still exists in the database (handles stale sessions after a DB reset)
+    const dbUser = await db.user.findUnique({ where: { id: user.id } })
+    if (!dbUser) {
+        return NextResponse.json({ error: 'Your session is invalid (user not found). Please log out and log back in.' }, { status: 401 })
+    }
+
     const formData = await req.formData()
     const file = formData.get('file') as File | null
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
