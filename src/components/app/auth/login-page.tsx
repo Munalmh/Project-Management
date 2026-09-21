@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+import { BRANDING } from '@/lib/branding'
 import {
   LayoutDashboard,
   Loader2,
@@ -28,59 +28,32 @@ const heroStats = [
 ]
 
 export function LoginPage() {
-  const router = useRouter()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    setLoading(true)
     const formData = new FormData(e.currentTarget)
     const email = formData.get('email') as string
     const password = formData.get('password') as string
 
-    if (!email.trim()) {
-      toast.error('Email is required.')
-      return
-    }
-    if (!password.trim()) {
-      toast.error('Password is required.')
-      return
-    }
-
-    setLoading(true)
     const result = await signIn('credentials', { email, password, redirect: false })
     if (result?.error) {
       toast.error('Invalid email or password')
-      setLoading(false)
-    } else {
-      toast.success('Signed in successfully!')
-      router.push('/dashboard')
-      router.refresh()
     }
+    setLoading(false)
   }
 
   async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    setLoading(true)
     const formData = new FormData(e.currentTarget)
     const name = formData.get('name') as string
     const email = formData.get('email') as string
     const password = formData.get('password') as string
 
-    if (!name.trim()) {
-      toast.error('Name is required.')
-      return
-    }
-    if (!email.trim()) {
-      toast.error('Email is required.')
-      return
-    }
-    if (!password.trim()) {
-      toast.error('Password is required.')
-      return
-    }
-
-    setLoading(true)
     const res = await fetch('/api/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -94,15 +67,11 @@ export function LoginPage() {
       if (!result?.ok) {
         toast.error('Account created but auto-login failed. Please sign in manually.')
         setMode('login')
-        setLoading(false)
-      } else {
-        router.push('/dashboard')
-        router.refresh()
       }
     } else {
       toast.error(data.error || 'Registration failed')
-      setLoading(false)
     }
+    setLoading(false)
   }
 
   return (
@@ -119,8 +88,8 @@ export function LoginPage() {
             <Image src="/logo.png" alt="Logo" width={40} height={40} className="rounded-xl object-contain" />
           </div>
           <div>
-            <p className="text-white font-semibold leading-tight">KutkiTech Pvt.Ltd</p>
-            <p className="text-[11px] tracking-wide text-[#8CC63F]">PROJECT MANAGEMENT PORTAL</p>
+            <p className="text-white font-semibold leading-tight">{BRANDING.companyName}</p>
+            <p className="text-[11px] tracking-wide text-[#8CC63F]">{BRANDING.portalLabel.toUpperCase()}</p>
           </div>
         </div>
 
@@ -158,7 +127,7 @@ export function LoginPage() {
             <div className="h-9 w-9 shrink-0">
               <Image src="/logo.png" alt="Logo" width={36} height={36} className="rounded-xl object-contain" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-white">KutkiTech Pvt.Ltd</h1>
+            <h1 className="text-xl font-bold tracking-tight text-white">{BRANDING.companyName}</h1>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-sm p-8">
@@ -300,7 +269,7 @@ export function LoginPage() {
           </div>
 
           <p className="text-center text-xs text-brand-muted/70 mt-6">
-            KutkiTech Pvt.Ltd · PROJECT MANAGEMENT PORTAL
+            {BRANDING.companyName} · {BRANDING.portalLabel.toUpperCase()}
           </p>
         </div>
       </div>

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "next-themes"
 import { ServiceWorkerRegister } from "@/components/pwa-register"
+import { QueryProvider } from "@/components/providers/query-provider"
 import "./globals.css"
 
 const inter = Inter({
@@ -39,9 +40,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} antialiased bg-background text-foreground`} suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
-        </ThemeProvider>
+        <QueryProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            {children}
+          </ThemeProvider>
+        </QueryProvider>
         <ServiceWorkerRegister />
       </body>
     </html>

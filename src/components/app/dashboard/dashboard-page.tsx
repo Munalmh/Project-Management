@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { formatDistanceToNow } from 'date-fns'
 import {
   PieChart,
@@ -59,6 +60,7 @@ function getInitials(name: string): string {
 
 export function DashboardPage() {
   const { data: session } = useSession()
+  const router = useRouter()
 
   const {
     data,
@@ -82,6 +84,7 @@ export function DashboardPage() {
       icon: FolderKanban,
       color: 'text-blue-500',
       bg: 'bg-blue-500/10',
+      href: '/projects'
     },
     {
       label: 'Total Tickets',
@@ -89,6 +92,7 @@ export function DashboardPage() {
       icon: Ticket,
       color: 'text-orange-500',
       bg: 'bg-orange-500/10',
+      href: '/tickets'
     },
     {
       label: 'Team Members',
@@ -96,6 +100,7 @@ export function DashboardPage() {
       icon: Users,
       color: 'text-green-500',
       bg: 'bg-green-500/10',
+      href: '/team'
     },
     {
       label: 'Active Projects',
@@ -103,6 +108,7 @@ export function DashboardPage() {
       icon: Activity,
       color: 'text-purple-500',
       bg: 'bg-purple-500/10',
+      href: '/projects'
     },
   ]
 
@@ -142,7 +148,11 @@ export function DashboardPage() {
             </Card>
           ))
           : statCards.map((stat) => (
-            <Card key={stat.label}>
+            <Card 
+              key={stat.label} 
+              className="cursor-pointer hover:shadow-md transition-shadow" 
+              onClick={() => router.push(stat.href)}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
                   <div className={`${stat.bg} ${stat.color} p-3 rounded-lg`}>
@@ -194,7 +204,8 @@ export function DashboardPage() {
                   {(data?.recentTickets ?? []).slice(0, 8).map((ticket) => (
                     <tr
                       key={ticket.id}
-                      className="border-b last:border-0 hover:bg-muted/50 transition-colors"
+                      className="border-b last:border-0 hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => router.push('/tickets')}
                     >
                       <td className="py-3 pr-4">
                         <span className="font-mono text-xs text-muted-foreground">

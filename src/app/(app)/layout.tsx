@@ -2,20 +2,22 @@
 
 import { useEffect } from 'react'
 import { useSession, SessionProvider } from 'next-auth/react'
-import { QueryProvider } from '@/components/providers/query-provider'
 import { useAppStore } from '@/store/app-store'
+import { LoginPage } from '@/components/app/auth/login-page'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import {
-  LayoutDashboard, FolderKanban, Columns3, Ticket, Users, LogOut, Menu, Moon, Sun, X, BarChart3, UserCog,
+  LayoutDashboard, FolderKanban, Columns3, Ticket, Users, LogOut, Menu, Moon, Sun, X, BarChart3, UserCog, Brush
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { signOut } from 'next-auth/react'
 import { Toaster } from 'sonner'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { BRANDING } from '@/lib/branding'
+import { useBrandingStore } from '@/store/brandingStore'
 
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
@@ -29,23 +31,29 @@ const navItems = [
   { href: '/team', label: 'Team', icon: Users, exact: false },
   { href: '/reports', label: 'Reports', icon: BarChart3, exact: false },
   { href: '/workload', label: 'Workload', icon: UserCog, exact: false },
+  { href: '/branding', label: 'Branding', icon: Brush, exact: false },
 ]
 
 function SidebarNav({ collapsed, onClose }: { collapsed?: boolean; onClose?: () => void }) {
   const pathname = usePathname()
   const { data: session } = useSession()
   const user = session?.user as { name?: string; email?: string; role?: string } | undefined
+  const { companyName, logoUrl } = useBrandingStore()
 
   return (
     <div className="flex flex-col h-full bg-brand-ink text-white">
       <div className="p-4 flex items-center gap-2.5">
-        <div className="h-8 w-8 rounded-lg bg-white overflow-hidden shrink-0">
-          <img src="/logo.png" alt="Logo" className="h-full w-full object-cover p-0.5" />
+        <div className="h-8 w-8 rounded-lg bg-white overflow-hidden shrink-0 flex items-center justify-center">
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="h-full w-full object-contain p-0.5" />
+          ) : (
+            <img src="/logo.png" alt="Logo" className="h-full w-full object-cover p-0.5" />
+          )}
         </div>
         {!collapsed && (
-          <div className="flex flex-col">
-            <h1 className="text-[15px] font-bold tracking-tight leading-none text-white">KutkiTech Pvt.Ltd</h1>
-            <span className="text-[9px] font-bold text-[#8CC63F] tracking-widest mt-1 uppercase">PROJECT MANAGEMENT PORTAL</span>
+          <div className="flex flex-col min-w-0">
+            <h1 className="text-[15px] font-bold tracking-tight leading-none text-white truncate max-w-[130px]">{companyName}</h1>
+            <span className="text-[9px] font-bold text-[#8CC63F] tracking-widest mt-1 uppercase truncate">{BRANDING.portalLabel}</span>
           </div>
         )}
         {onClose && (
@@ -128,6 +136,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
     )
   }
 
+  if (!session) return <LoginPage />
+
   return (
     <div className="min-h-screen flex bg-background">
       {/* Desktop Sidebar */}
@@ -168,9 +178,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <QueryProvider>
-        <AppContent>{children}</AppContent>
-      </QueryProvider>
+      <AppContent>{children}</AppContent>
     </SessionProvider>
   )
 }
