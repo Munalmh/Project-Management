@@ -35,43 +35,58 @@ export function LoginPage() {
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
-    const formData = new FormData(e.currentTarget)
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
+    try {
+      const formData = new FormData(e.currentTarget)
+      const email = formData.get('email') as string
+      const password = formData.get('password') as string
 
-    const result = await signIn('credentials', { email, password, redirect: false })
-    if (result?.error) {
-      toast.error('Invalid email or password')
+      const result = await signIn('credentials', { email, password, redirect: false })
+      if (result?.error) {
+        toast.error('Invalid email or password')
+      } else if (result?.ok) {
+        toast.success('Signed in successfully!')
+        window.location.href = '/dashboard' // Force a hard navigation to ensure session is loaded
+      }
+    } catch (err) {
+      toast.error('A network error occurred. Please check your connection or server configuration.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
-    const formData = new FormData(e.currentTarget)
-    const name = formData.get('name') as string
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
+    try {
+      const formData = new FormData(e.currentTarget)
+      const name = formData.get('name') as string
+      const email = formData.get('email') as string
+      const password = formData.get('password') as string
 
-    const res = await fetch('/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password }),
-    })
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+      })
 
-    const data = await res.json()
-    if (res.ok) {
-      toast.success('Account created! Signing you in...')
-      const result = await signIn('credentials', { email, password, redirect: false })
-      if (!result?.ok) {
-        toast.error('Account created but auto-login failed. Please sign in manually.')
-        setMode('login')
+      const data = await res.json()
+      if (res.ok) {
+        toast.success('Account created! Signing you in...')
+        const result = await signIn('credentials', { email, password, redirect: false })
+        if (!result?.ok) {
+          toast.error('Account created but auto-login failed. Please sign in manually.')
+          setMode('login')
+        } else {
+          window.location.href = '/dashboard' // Force a hard navigation to ensure session is loaded
+        }
+      } else {
+        toast.error(data.error || 'Registration failed')
       }
-    } else {
-      toast.error(data.error || 'Registration failed')
+    } catch (err) {
+      toast.error('A network error occurred. Please check your connection or server configuration.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
