@@ -17,6 +17,9 @@ const ticketSchema = z.object({
   assigneeIds: z.array(z.string()).optional(),
   startDate: z.string().nullable().optional(),
   dueDate: z.string().nullable().optional(),
+  timesheetHours: z.union([z.number(), z.string()]).optional(),
+  timesheetDate: z.string().optional(),
+  timesheetNote: z.string().optional(),
 })
 
 export async function GET(req: Request) {
@@ -68,6 +71,37 @@ export async function POST(req: Request) {
     const body = await req.json()
     const data = ticketSchema.parse(body)
     const userId = (session.user as { id: string }).id
+    
+    // Timesheet validation
+    let timesheetEntryData = null
+    const hours = Number(data.timesheetHours)
+    if (hours > 0) {
+      if (hours > 24) {
+        return NextResponse.json({ error: 'Cannot log more than 24 hours at once' }, { status: 400 })
+      }
+      const dateStr = data.timesheetDate || new Date().toISOString().split('T')[0]
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return NextResponse.json({ error: 'A valid timesheet date is required' }, { status: 400 })
+      }
+      const entryDate = new Date(dateStr)
+      
+      const existingEntries = await db.timesheetEntry.findMany({
+        where: { userId: userId, date: entryDate },
+      })
+      const dailyTotal = existingEntries.reduce((sum, e) => sum + e.hours, 0)
+      if (dailyTotal + hours > 24) {
+        return NextResponse.json({ 
+          error: `Daily total cannot exceed 24 hours. You already logged ${dailyTotal}h on ${dateStr}.` 
+        }, { status: 400 })
+      }
+      
+      timesheetEntryData = {
+        userId,
+        date: entryDate,
+        hours,
+        note: data.timesheetNote?.trim() || null,
+      }
+    }
 
     const ticket = await db.ticket.create({
       data: {
@@ -82,6 +116,7 @@ export async function POST(req: Request) {
         assignees: data.assigneeIds
           ? { create: data.assigneeIds.map((uid: string) => ({ userId: uid, assignedById: userId })) }
           : undefined,
+        timesheetEntries: timesheetEntryData ? { create: timesheetEntryData } : undefined,
       },
       include: {
         project: { select: { name: true, prefix: true, color: true } },

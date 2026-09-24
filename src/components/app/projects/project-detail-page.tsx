@@ -160,6 +160,8 @@ export function ProjectDetailPage() {
     assigneeIds: [] as string[],
     startDate: '',
     dueDate: '',
+    timesheetHours: '',
+    timesheetNote: '',
   })
   const [priorities, setPriorities] = useState<Priority[]>([])
 
@@ -309,6 +311,8 @@ export function ProjectDetailPage() {
       assigneeIds: [],
       startDate: '',
       dueDate: '',
+      timesheetHours: '',
+      timesheetNote: '',
     })
     setTicketDialogOpen(true)
   }
@@ -337,6 +341,9 @@ export function ProjectDetailPage() {
           assigneeIds: ticketForm.assigneeIds,
           startDate: ticketForm.startDate || null,
           dueDate: ticketForm.dueDate || null,
+          timesheetHours: ticketForm.timesheetHours || undefined,
+          timesheetNote: ticketForm.timesheetNote || undefined,
+          timesheetDate: new Date().toISOString().split('T')[0],
         }),
       })
       if (!res.ok) {
@@ -975,6 +982,13 @@ export function ProjectDetailPage() {
                     value={ticketForm.dueDate}
                     onChange={(e) => setTicketForm((p) => ({ ...p, dueDate: e.target.value }))}
                   />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label>Log Time (Optional)</Label>
+                <div className="flex gap-2">
+                  <Input type="number" step="0.25" min="0" max="24" placeholder="Hours" className="w-24" value={ticketForm.timesheetHours} onChange={e => setTicketForm(p => ({ ...p, timesheetHours: e.target.value }))} />
+                  <Input placeholder="Note" value={ticketForm.timesheetNote} onChange={e => setTicketForm(p => ({ ...p, timesheetNote: e.target.value }))} />
                 </div>
               </div>
             </div>

@@ -69,7 +69,7 @@ export function TicketsPage() {
 
   // Create dialog
   const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState({ title: '', description: '', projectId: '', statusId: '', priorityId: '', dueDate: '' })
+  const [createForm, setCreateForm] = useState({ title: '', description: '', projectId: '', statusId: '', priorityId: '', dueDate: '', timesheetHours: '', timesheetNote: '' })
   const [createLoading, setCreateLoading] = useState(false)
   const [createStatuses, setCreateStatuses] = useState<{ id: string; name: string }[]>([])
   const [members, setMembers] = useState<ProjectMember[]>([])
@@ -114,7 +114,7 @@ export function TicketsPage() {
   })
 
   async function openCreateDialog() {
-    setCreateForm({ title: '', description: '', projectId: '', statusId: '', priorityId: '', dueDate: '' })
+    setCreateForm({ title: '', description: '', projectId: '', statusId: '', priorityId: '', dueDate: '', timesheetHours: '', timesheetNote: '' })
     setSelectedAssignees([])
     setCreateStatuses([])
     setCreateOpen(true)
@@ -324,9 +324,18 @@ export function TicketsPage() {
                 </Select>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Due Date</Label>
-              <Input type="date" value={createForm.dueDate} onChange={e => setCreateForm(f => ({ ...f, dueDate: e.target.value }))} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Due Date</Label>
+                <Input type="date" value={createForm.dueDate} onChange={e => setCreateForm(f => ({ ...f, dueDate: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Log Time (Optional)</Label>
+                <div className="flex gap-2">
+                  <Input type="number" step="0.25" min="0" max="24" placeholder="Hours" className="w-24" value={createForm.timesheetHours} onChange={e => setCreateForm(f => ({ ...f, timesheetHours: e.target.value }))} />
+                  <Input placeholder="Note" value={createForm.timesheetNote} onChange={e => setCreateForm(f => ({ ...f, timesheetNote: e.target.value }))} />
+                </div>
+              </div>
             </div>
             {createForm.projectId && members.length > 0 && (
               <div className="space-y-2">

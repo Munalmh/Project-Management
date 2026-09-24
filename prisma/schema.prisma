@@ -169,3 +169,13 @@ model TicketComment {
   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+model RateLimitEntry {
+  id          String   @id @default(cuid())
+  key         String // e.g. "/api/auth:203.0.113.5" — identifies who + which limit bucket
+  windowStart DateTime // start of the fixed time window this count belongs to
+  count       Int      @default(1)
+
+  @@unique([key, windowStart])
+  @@index([key])
+}

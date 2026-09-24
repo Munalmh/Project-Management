@@ -22,6 +22,7 @@ export function TicketTimesheet({ ticketId }: { ticketId: string }) {
   const currentUser = session?.user as { id: string; role: string } | undefined
 
   const [entries, setEntries] = useState<TimesheetEntry[]>([])
+  const [summary, setSummary] = useState({ dailyTotal: 0, weeklyTotal: 0 })
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -33,8 +34,12 @@ export function TicketTimesheet({ ticketId }: { ticketId: string }) {
 
   async function loadEntries() {
     try {
-      const res = await fetch(`/api/tickets/${ticketId}/timesheet`)
+      const [res, summaryRes] = await Promise.all([
+        fetch(`/api/tickets/${ticketId}/timesheet`),
+        fetch(`/api/timesheet/summary`)
+      ])
       if (res.ok) setEntries(await res.json())
+      if (summaryRes.ok) setSummary(await summaryRes.json())
     } finally {
       setLoading(false)
     }
@@ -60,12 +65,24 @@ export function TicketTimesheet({ ticketId }: { ticketId: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: form.date, hours, note: form.note }),
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to log time')
+      }
       const entry = await res.json()
       setEntries((prev) => [entry, ...prev])
       setForm((f) => ({ ...f, hours: '', note: '' }))
-    } catch {
-      toast.error('Failed to log time')
+      
+      // Update summary manually to reflect immediately
+      if (form.date === format(new Date(), 'yyyy-MM-dd')) {
+        setSummary(s => ({ dailyTotal: s.dailyTotal + hours, weeklyTotal: s.weeklyTotal + hours }))
+      } else {
+        setSummary(s => ({ ...s, weeklyTotal: s.weeklyTotal + hours })) // assuming it's this week
+      }
+      
+      toast.success('Time logged successfully')
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to log time')
     } finally {
       setAdding(false)
     }
@@ -73,6 +90,7 @@ export function TicketTimesheet({ ticketId }: { ticketId: string }) {
 
   async function handleRemove(entryId: string) {
     setBusyId(entryId)
+    const entryToRemove = entries.find(e => e.id === entryId)
     const previous = entries
     setEntries((prev) => prev.filter((e) => e.id !== entryId))
     try {
@@ -80,6 +98,15 @@ export function TicketTimesheet({ ticketId }: { ticketId: string }) {
         method: 'DELETE',
       })
       if (!res.ok) throw new Error()
+      
+      // Update summary manually
+      if (entryToRemove) {
+        if (entryToRemove.date.startsWith(format(new Date(), 'yyyy-MM-dd'))) {
+          setSummary(s => ({ dailyTotal: Math.max(0, s.dailyTotal - entryToRemove.hours), weeklyTotal: Math.max(0, s.weeklyTotal - entryToRemove.hours) }))
+        } else {
+          setSummary(s => ({ ...s, weeklyTotal: Math.max(0, s.weeklyTotal - entryToRemove.hours) }))
+        }
+      }
     } catch {
       setEntries(previous)
       toast.error('Failed to remove entry')
@@ -93,10 +120,16 @@ export function TicketTimesheet({ ticketId }: { ticketId: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium flex items-center gap-1.5">
-          <Clock className="h-4 w-4" />
-          Timesheet {entries.length > 0 && `(${totalHours}h logged)`}
-        </h4>
+        <div className="flex flex-col gap-1">
+          <h4 className="text-sm font-medium flex items-center gap-1.5">
+            <Clock className="h-4 w-4" />
+            Timesheet {entries.length > 0 && `(${totalHours}h logged)`}
+          </h4>
+          <span className="text-xs text-muted-foreground flex gap-3">
+            <span>Today: {summary.dailyTotal}h / 24h</span>
+            <span>This Week: {summary.weeklyTotal}h</span>
+          </span>
+        </div>
       </div>
 
       {loading ? (
